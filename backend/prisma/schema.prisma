@@ -1,0 +1,265 @@
+// ─────────────────────────────────────────────────────────────
+// Wezete RMS — Prisma Schema
+// Stack: NestJS + Prisma + PostgreSQL
+// ─────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ──────────────── ENUMS ────────────────
+
+enum Role {
+  CUSTOMER        // 1
+  BARISTA         // 2
+  CHEF            // 3
+  WAITER          // 4
+  CASHIER         // 5
+  INVENTORY_MANAGER // 6
+  ADMIN           // 7
+  SUPER_ADMIN     // 8
+}
+
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  PREPARING
+  READY
+  SERVING
+  BILLING
+  PAYMENT
+  COMPLETE
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  CHAPA
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum ApprovalType {
+  VOID
+  DISCOUNT
+  REFUND
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ──────────────── MODELS ────────────────
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  phone     String?  @unique
+  password  String
+  firstName String   @map("first_name")
+  lastName  String   @map("last_name")
+  role      Role     @default(CUSTOMER)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  orders            Order[]
+  auditLogs         AuditLog[]
+  approvalRequests  ApprovalRequest[] @relation("RequestedBy")
+  approvalDecisions ApprovalRequest[] @relation("DecidedBy")
+  refreshTokens     RefreshToken[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model Category {
+  id        String     @id @default(uuid())
+  name      String     @unique
+  slug      String     @unique
+  imageUrl  String?    @map("image_url")
+  sortOrder Int        @default(0) @map("sort_order")
+  isActive  Boolean    @default(true) @map("is_active")
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+
+  menuItems MenuItem[]
+
+  @@map("categories")
+}
+
+model MenuItem {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  price       Decimal  @db.Decimal(10, 2)
+  imageUrl    String?  @map("image_url")
+  isAvailable Boolean  @default(true) @map("is_available")
+  prepTime    Int?     @map("prep_time") // minutes
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  categoryId String   @map("category_id")
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  orderItems         OrderItem[]
+  inventoryDeductions MenuItemInventory[]
+
+  @@map("menu_items")
+}
+
+model InventoryItem {
+  id           String   @id @default(uuid())
+  name         String   @unique
+  unit         String   // e.g. "kg", "litre", "piece"
+  quantity     Decimal  @db.Decimal(12, 4)
+  reorderLevel Decimal  @db.Decimal(12, 4) @map("reorder_level")
+  costPerUnit  Decimal  @db.Decimal(10, 2) @map("cost_per_unit")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  menuItems MenuItemInventory[]
+
+  @@map("inventory_items")
+}
+
+// Join table: how much of each inventory item a menu item consumes
+model MenuItemInventory {
+  id              String @id @default(uuid())
+  quantityUsed    Decimal @db.Decimal(12, 4) @map("quantity_used")
+
+  menuItemId      String        @map("menu_item_id")
+  menuItem        MenuItem      @relation(fields: [menuItemId], references: [id])
+
+  inventoryItemId String        @map("inventory_item_id")
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+
+  @@unique([menuItemId, inventoryItemId])
+  @@map("menu_item_inventory")
+}
+
+model Order {
+  id          String      @id @default(uuid())
+  orderNumber String      @unique @map("order_number") // e.g. "WZ-20260330-0001"
+  status      OrderStatus @default(PENDING)
+  orderType   String      @map("order_type") // DINE_IN, TAKEAWAY, DELIVERY
+  tableNumber Int?        @map("table_number")
+  subtotal    Decimal     @db.Decimal(10, 2) @default(0)
+  tax         Decimal     @db.Decimal(10, 2) @default(0)
+  discount    Decimal     @db.Decimal(10, 2) @default(0)
+  total       Decimal     @db.Decimal(10, 2) @default(0)
+  notes       String?
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id])
+
+  items            OrderItem[]
+  payment          Payment?
+  approvalRequests ApprovalRequest[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id             String  @id @default(uuid())
+  quantity       Int
+  unitPrice      Decimal @db.Decimal(10, 2) @map("unit_price")
+  totalPrice     Decimal @db.Decimal(10, 2) @map("total_price")
+  customisations Json?   @db.JsonB // JSONB — e.g. {"size":"large","extras":["cheese"]}
+  dietaryNotes   Json?   @db.JsonB @map("dietary_notes") // JSONB — e.g. {"allergies":["gluten"],"preference":"vegan"}
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  orderId    String   @map("order_id")
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  menuItemId String   @map("menu_item_id")
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
+
+  @@map("order_items")
+}
+
+model Payment {
+  id        String        @id @default(uuid())
+  amount    Decimal       @db.Decimal(10, 2)
+  method    PaymentMethod
+  status    PaymentStatus @default(PENDING)
+  txRef     String?       @unique @map("tx_ref") // Chapa transaction reference
+  chapaRef  String?       @unique @map("chapa_ref") // Chapa's own reference after verify
+  paidAt    DateTime?     @map("paid_at")
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  orderId String @unique @map("order_id")
+  order   Order  @relation(fields: [orderId], references: [id])
+
+  @@index([txRef])
+  @@map("payments")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String   // e.g. "ORDER_CREATED", "ITEM_VOIDED", "PRICE_CHANGED"
+  entity    String   // e.g. "Order", "MenuItem"
+  entityId  String   @map("entity_id")
+  delta     Json?    @db.JsonB // JSONB — before/after snapshot
+  ipAddress String?  @map("ip_address")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model ApprovalRequest {
+  id        String         @id @default(uuid())
+  type      ApprovalType   // VOID, DISCOUNT, REFUND
+  status    ApprovalStatus @default(PENDING)
+  reason    String
+  metadata  Json?          @db.JsonB // e.g. {"discountPercent":15,"originalTotal":500}
+  decidedAt DateTime?      @map("decided_at")
+  createdAt DateTime       @default(now()) @map("created_at")
+
+  orderId      String @map("order_id")
+  order        Order  @relation(fields: [orderId], references: [id])
+
+  requestedById String @map("requested_by_id")
+  requestedBy   User   @relation("RequestedBy", fields: [requestedById], references: [id])
+
+  decidedById String? @map("decided_by_id")
+  decidedBy   User?   @relation("DecidedBy", fields: [decidedById], references: [id])
+
+  @@index([status])
+  @@map("approval_requests")
+}
