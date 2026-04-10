@@ -27,11 +27,11 @@ export class PaymentsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   create(
     @Body() dto: CreatePaymentDto,
-    @CurrentUser() user: { id: string; role: Role },
+    @CurrentUser() user: { id: string; role: number; roleName: string },
   ) {
     // CASH payments require CASHIER role or above
     if (dto.method === PaymentMethod.CASH) {
-      if ((ROLE_LEVEL[user.role] ?? 0) < ROLE_LEVEL.CASHIER) {
+      if (user.role < ROLE_LEVEL.CASHIER) {
         throw new ForbiddenException(
           'Only CASHIER or above can process cash payments',
         );
