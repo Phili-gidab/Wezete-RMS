@@ -4,7 +4,11 @@ import {
   useTopItems,
   useInventoryReport,
   useAuditReport,
+  useExportSalesPdf,
+  useExportSalesExcel,
+  useExportInventoryExcel,
 } from '../../api/hooks';
+import toast from 'react-hot-toast';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -494,6 +498,12 @@ export default function Reports() {
             )}
           </div>
         )}
+
+        {/* Export buttons */}
+        <div className="sm:ml-auto flex gap-2">
+          {activeTab === 'sales' && <ExportButtons from={from} to={to} />}
+          {activeTab === 'inventory' && <InventoryExportButton />}
+        </div>
       </div>
 
       {/* Tab Content */}
@@ -501,5 +511,42 @@ export default function Reports() {
       {activeTab === 'inventory' && <InventoryTab />}
       {activeTab === 'audit' && <AuditTab from={from} to={to} />}
     </div>
+  );
+}
+
+function ExportButtons({ from, to }: { from: string; to: string }) {
+  const exportPdf = useExportSalesPdf();
+  const exportExcel = useExportSalesExcel();
+
+  return (
+    <>
+      <button
+        onClick={() => exportPdf.mutate({ from: from || undefined, to: to || undefined }, { onError: () => toast.error('Export failed') })}
+        disabled={exportPdf.isPending}
+        className="px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+      >
+        {exportPdf.isPending ? 'Exporting...' : 'PDF'}
+      </button>
+      <button
+        onClick={() => exportExcel.mutate({ from: from || undefined, to: to || undefined }, { onError: () => toast.error('Export failed') })}
+        disabled={exportExcel.isPending}
+        className="px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+      >
+        {exportExcel.isPending ? 'Exporting...' : 'Excel'}
+      </button>
+    </>
+  );
+}
+
+function InventoryExportButton() {
+  const exportExcel = useExportInventoryExcel();
+  return (
+    <button
+      onClick={() => exportExcel.mutate(undefined, { onError: () => toast.error('Export failed') })}
+      disabled={exportExcel.isPending}
+      className="px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+    >
+      {exportExcel.isPending ? 'Exporting...' : 'Export Excel'}
+    </button>
   );
 }

@@ -124,14 +124,24 @@ export class OrdersService {
   async findAll(filters: {
     status?: OrderStatus;
     userId?: string;
+    from?: Date;
+    to?: Date;
+    orderType?: string;
     page?: number;
     limit?: number;
   }) {
-    const { status, userId, page = 1, limit = 20 } = filters;
+    const { status, userId, from, to, orderType, page = 1, limit = 20 } = filters;
 
     const where: Prisma.OrderWhereInput = {};
     if (status) where.status = status;
     if (userId) where.userId = userId;
+    if (orderType) where.orderType = orderType;
+    if (from || to) {
+      where.createdAt = {
+        ...(from && { gte: from }),
+        ...(to && { lte: to }),
+      };
+    }
 
     const [data, total] = await this.prisma.$transaction([
       this.prisma.order.findMany({
@@ -220,6 +230,92 @@ export class OrdersService {
     });
 
     return updated;
+  }
+
+  /**
+   * Generate a PDF receipt for a completed order.
+   */
+  async generateReceipt(id: string): Promise<Buffer> {
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+      include: {
+        items: { include: { menuItem: true } },
+        payment: true,
+        user: { select: { firstName: true, lastName: true } },
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException(`Order ${id} not found`);
+    }
+
+    const PDFDocument = (await import('pdfkit')).default;
+
+    return new Promise((resolve) => {
+      const doc = new PDFDocument({ size: [226, 600], margin: 15 }); // ~80mm thermal receipt width
+      const chunks: Buffer[] = [];
+      doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+
+      // Header
+      doc.fontSize(14).font('Helvetica-Bold').text('Wezete RMS', { align: 'center' });
+      doc.fontSize(8).font('Helvetica').text('The Bar Addis Restaurant & Lounge', { align: 'center' });
+      doc.text('Addis Ababa, Ethiopia', { align: 'center' });
+      doc.moveDown(0.3);
+      doc.text('─'.repeat(30), { align: 'center' });
+      doc.moveDown(0.3);
+
+      // Order info
+      doc.fontSize(9).font('Helvetica-Bold').text(`Order: ${order.orderNumber}`);
+      doc.font('Helvetica').text(`Date: ${new Date(order.createdAt).toLocaleString()}`);
+      doc.text(`Type: ${order.orderType.replace('_', ' ')}`);
+      if (order.tableNumber) doc.text(`Table: ${order.tableNumber}`);
+      if (order.user) doc.text(`Server: ${order.user.firstName} ${order.user.lastName}`);
+      doc.moveDown(0.3);
+      doc.text('─'.repeat(30), { align: 'center' });
+      doc.moveDown(0.3);
+
+      // Items
+      doc.font('Helvetica-Bold').fontSize(8);
+      order.items.forEach((item) => {
+        const name = item.menuItem.name;
+        const qty = item.quantity;
+        const total = Number(item.totalPrice).toFixed(2);
+        doc.font('Helvetica').text(`${qty}x ${name}`, { continued: false });
+        doc.text(`   ETB ${total}`, { align: 'right' });
+      });
+
+      doc.moveDown(0.3);
+      doc.text('─'.repeat(30), { align: 'center' });
+      doc.moveDown(0.3);
+
+      // Totals
+      doc.fontSize(8);
+      doc.text(`Subtotal:    ETB ${Number(order.subtotal).toFixed(2)}`, { align: 'right' });
+      doc.text(`Tax (15%):   ETB ${Number(order.tax).toFixed(2)}`, { align: 'right' });
+      if (Number(order.discount) > 0) {
+        doc.text(`Discount:   -ETB ${Number(order.discount).toFixed(2)}`, { align: 'right' });
+      }
+      doc.moveDown(0.2);
+      doc.font('Helvetica-Bold').fontSize(11);
+      doc.text(`Total: ETB ${Number(order.total).toFixed(2)}`, { align: 'right' });
+
+      // Payment
+      if (order.payment) {
+        doc.moveDown(0.3);
+        doc.font('Helvetica').fontSize(8);
+        doc.text(`Paid: ${order.payment.method} — ${order.payment.status}`, { align: 'center' });
+        if (order.payment.paidAt) {
+          doc.text(`At: ${new Date(order.payment.paidAt).toLocaleString()}`, { align: 'center' });
+        }
+      }
+
+      doc.moveDown(0.5);
+      doc.fontSize(8).text('Thank you for dining with us!', { align: 'center' });
+      doc.text('Wezete Technology', { align: 'center' });
+
+      doc.end();
+    });
   }
 
   // ──────────────── Side-effects ────────────────

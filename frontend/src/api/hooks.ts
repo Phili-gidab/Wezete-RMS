@@ -324,3 +324,62 @@ export function useAuditReport(from?: string, to?: string) {
       api.get('/api/v1/reports/audit', { params: { from, to } }).then((r) => r.data),
   });
 }
+
+// ──────────── Downloads / Exports ────────────
+
+async function downloadBlob(url: string, filename: string, params?: Record<string, string>) {
+  const response = await api.get(url, { params, responseType: 'blob' });
+  const blob = new Blob([response.data]);
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+export function useExportSalesPdf() {
+  return useMutation({
+    mutationFn: (params?: { from?: string; to?: string }) =>
+      downloadBlob('/api/v1/reports/sales/export/pdf', `sales-report.pdf`, params),
+  });
+}
+
+export function useExportSalesExcel() {
+  return useMutation({
+    mutationFn: (params?: { from?: string; to?: string }) =>
+      downloadBlob('/api/v1/reports/sales/export/xlsx', `sales-report.xlsx`, params),
+  });
+}
+
+export function useExportInventoryExcel() {
+  return useMutation({
+    mutationFn: () =>
+      downloadBlob('/api/v1/reports/inventory/export/xlsx', `inventory-report.xlsx`),
+  });
+}
+
+export function useDownloadReceipt() {
+  return useMutation({
+    mutationFn: (orderId: string) =>
+      downloadBlob(`/api/v1/orders/${orderId}/receipt`, `receipt-${orderId.slice(0, 8)}.pdf`),
+  });
+}
+
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: (data: { currentPassword: string; newPassword: string }) =>
+      api.post('/api/v1/auth/change-password', data).then((r) => r.data),
+  });
+}
+
+export function useUploadImage() {
+  return useMutation({
+    mutationFn: (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      return api.post('/api/v1/uploads/image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      }).then((r) => r.data);
+    },
+  });
+}

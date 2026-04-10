@@ -7,8 +7,10 @@ import {
   Patch,
   Post,
   Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { OrderStatus } from '@prisma/client';
 import { ROLE_LEVEL } from '../auth/strategies/jwt.strategy';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -36,12 +38,18 @@ export class OrdersController {
   findAll(
     @Query('status') status?: OrderStatus,
     @Query('userId') userId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('orderType') orderType?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
     return this.ordersService.findAll({
       status,
       userId,
+      from: from ? new Date(from) : undefined,
+      to: to ? new Date(to) : undefined,
+      orderType,
       page: page ? parseInt(page, 10) : undefined,
       limit: limit ? parseInt(limit, 10) : undefined,
     });
@@ -59,5 +67,15 @@ export class OrdersController {
     @Body() dto: UpdateOrderStatusDto,
   ) {
     return this.ordersService.updateStatus(id, dto);
+  }
+
+  @Get(':id/receipt')
+  async getReceipt(@Param('id', ParseUUIDPipe) id: string, @Res() res: Response) {
+    const buffer = await this.ordersService.generateReceipt(id);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename=receipt-${id.slice(0, 8)}.pdf`,
+    });
+    res.send(buffer);
   }
 }

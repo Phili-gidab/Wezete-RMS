@@ -14,6 +14,7 @@ import { InventoryModule } from './inventory/inventory.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ReportsModule } from './reports/reports.module';
 import { ApprovalsModule } from './approvals/approvals.module';
+import { UploadsModule } from './uploads/uploads.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { ApprovalsModule } from './approvals/approvals.module';
     NotificationsModule,
     ReportsModule,
     ApprovalsModule,
+    UploadsModule,
   ],
   controllers: [AppController],
   providers: [

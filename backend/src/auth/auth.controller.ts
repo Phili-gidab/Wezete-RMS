@@ -85,6 +85,17 @@ export class AuthController {
     return this.authService.getProfile(userId);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  async changePassword(
+    @CurrentUser('id') userId: string,
+    @Body() body: { currentPassword: string; newPassword: string },
+  ) {
+    await this.authService.changePassword(userId, body.currentPassword, body.newPassword);
+    return { message: 'Password changed successfully' };
+  }
+
   private setRefreshCookie(res: Response, token: string) {
     res.cookie(REFRESH_COOKIE, token, {
       httpOnly: true,
