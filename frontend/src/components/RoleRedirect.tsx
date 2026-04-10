@@ -3,7 +3,7 @@ import { useAuthStore, type RoleId } from '../stores/useAuthStore';
 
 /** Maps each role to its default landing page */
 const ROLE_HOME: Record<RoleId, string> = {
-  1: '/menu',       // Customer — browse menu (future)
+  1: '/customer/menu', // Customer — browse menu
   2: '/kds',        // Barista
   3: '/kds',        // Chef
   4: '/orders',     // Waiter

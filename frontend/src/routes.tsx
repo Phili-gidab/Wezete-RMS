@@ -8,27 +8,19 @@ import Register from './pages/Register';
 import DevLogin from './pages/DevLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import MenuManagement from './pages/admin/MenuManagement';
+import StaffManagement from './pages/admin/StaffManagement';
+import Reports from './pages/admin/Reports';
+import Approvals from './pages/admin/Approvals';
+import Settings from './pages/admin/Settings';
 import OrdersBoard from './pages/waiter/OrdersBoard';
 import KitchenDisplay from './pages/kds/KitchenDisplay';
 import CashierDashboard from './pages/cashier/CashierDashboard';
 import InventoryManagement from './pages/inventory/InventoryManagement';
-
-// Placeholder for pages still under construction
-function Placeholder({ title }: { title: string }) {
-  return (
-    <div>
-      <h1 className="text-2xl font-semibold text-[#0A3D39]">{title}</h1>
-      <p className="mt-1 text-slate-500">This page is under construction.</p>
-    </div>
-  );
-}
+import CustomerMenu from './pages/customer/CustomerMenu';
 
 const router = createBrowserRouter([
   // Root — redirect to role-appropriate home
-  {
-    path: '/',
-    element: <RoleRedirect />,
-  },
+  { path: '/', element: <RoleRedirect /> },
 
   // Public routes
   { path: '/login', element: <Login /> },
@@ -46,9 +38,10 @@ const router = createBrowserRouter([
         children: [
           { path: '/admin', element: <AdminDashboard /> },
           { path: '/menu', element: <MenuManagement /> },
-          { path: '/staff', element: <Placeholder title="Staff Management" /> },
-          { path: '/accounting', element: <Placeholder title="Reports & Accounting" /> },
-          { path: '/settings', element: <Placeholder title="Settings" /> },
+          { path: '/staff', element: <StaffManagement /> },
+          { path: '/approvals', element: <Approvals /> },
+          { path: '/accounting', element: <Reports /> },
+          { path: '/settings', element: <Settings /> },
         ],
       },
 
@@ -81,9 +74,17 @@ const router = createBrowserRouter([
         element: <ProtectedRoute allowedRoles={[4, 7, 8]} />,
         children: [
           { path: '/orders', element: <OrdersBoard /> },
-          { path: '/tables', element: <Placeholder title="Tables" /> },
         ],
       },
+
+    ],
+  },
+
+  // Customer — full-page layout (no sidebar)
+  {
+    element: <ProtectedRoute allowedRoles={[1]} />,
+    children: [
+      { path: '/customer/menu', element: <CustomerMenu /> },
     ],
   },
 ]);

@@ -3,13 +3,15 @@ import {
   LayoutDashboard,
   UtensilsCrossed,
   ClipboardList,
-  Armchair,
   Receipt,
   Settings,
   LogOut,
   Package,
   ChefHat,
   CreditCard,
+  Users,
+  ShieldCheck,
+  ShoppingBag,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuthStore, type RoleId } from '../stores/useAuthStore';
@@ -38,15 +40,21 @@ const NAV_ITEMS: NavItem[] = [
     roles: [7, 8],
   },
   {
+    to: '/staff',
+    label: 'Staff',
+    icon: Users,
+    roles: [7, 8],
+  },
+  {
+    to: '/approvals',
+    label: 'Approvals',
+    icon: ShieldCheck,
+    roles: [7, 8],
+  },
+  {
     to: '/orders',
     label: 'Orders',
     icon: ClipboardList,
-    roles: [4, 7, 8],
-  },
-  {
-    to: '/tables',
-    label: 'Tables',
-    icon: Armchair,
     roles: [4, 7, 8],
   },
   {
@@ -78,6 +86,12 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Settings',
     icon: Settings,
     roles: [7, 8],
+  },
+  {
+    to: '/customer/menu',
+    label: 'Order Food',
+    icon: ShoppingBag,
+    roles: [1],
   },
 ];
 

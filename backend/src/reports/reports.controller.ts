@@ -34,6 +34,27 @@ export class ReportsController {
     return this.reportsService.inventoryReport();
   }
 
+  @Get('payments')
+  paymentReport(@Query() query: ReportQueryDto) {
+    return this.reportsService.paymentReport(
+      query.from ? new Date(query.from) : undefined,
+      query.to ? new Date(query.to) : undefined,
+    );
+  }
+
+  @Get('staff-activity')
+  staffActivity(@Query() query: ReportQueryDto) {
+    return this.reportsService.staffActivity(
+      query.from ? new Date(query.from) : undefined,
+      query.to ? new Date(query.to) : undefined,
+    );
+  }
+
+  @Get('order-stats')
+  orderStats() {
+    return this.reportsService.orderStats();
+  }
+
   @Get('audit')
   auditReport(@Query() query: ReportQueryDto) {
     return this.reportsService.auditReport(

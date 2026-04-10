@@ -101,6 +101,94 @@ export class ReportsService {
     }));
   }
 
+  async paymentReport(from?: Date, to?: Date) {
+    const dateFilter = this.buildDateFilter(from, to);
+
+    const payments = await this.prisma.payment.findMany({
+      where: dateFilter,
+      include: {
+        order: { select: { orderNumber: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const summary = {
+      total: payments.length,
+      totalAmount: 0,
+      byMethod: { CASH: { count: 0, total: 0 }, CHAPA: { count: 0, total: 0 } },
+      byStatus: { PENDING: 0, SUCCESS: 0, FAILED: 0, REFUNDED: 0 },
+    };
+
+    for (const p of payments) {
+      const amount = Number(p.amount);
+      summary.totalAmount += amount;
+      summary.byMethod[p.method].count++;
+      summary.byMethod[p.method].total += amount;
+      summary.byStatus[p.status]++;
+    }
+
+    summary.totalAmount = Math.round(summary.totalAmount * 100) / 100;
+    summary.byMethod.CASH.total = Math.round(summary.byMethod.CASH.total * 100) / 100;
+    summary.byMethod.CHAPA.total = Math.round(summary.byMethod.CHAPA.total * 100) / 100;
+
+    return {
+      summary,
+      payments: payments.map((p) => ({
+        id: p.id,
+        orderNumber: p.order.orderNumber,
+        amount: Number(p.amount),
+        method: p.method,
+        status: p.status,
+        txRef: p.txRef,
+        paidAt: p.paidAt,
+        createdAt: p.createdAt,
+      })),
+    };
+  }
+
+  async staffActivity(from?: Date, to?: Date) {
+    const dateFilter = this.buildDateFilter(from, to);
+
+    const logs = await this.prisma.auditLog.groupBy({
+      by: ['userId'],
+      where: dateFilter,
+      _count: { id: true },
+    });
+
+    const userIds = logs.map((l) => l.userId);
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, firstName: true, lastName: true, role: true, isActive: true },
+    });
+
+    const userMap = new Map(users.map((u) => [u.id, u]));
+
+    return logs
+      .map((l) => ({
+        user: userMap.get(l.userId),
+        actionCount: l._count.id,
+      }))
+      .sort((a, b) => b.actionCount - a.actionCount);
+  }
+
+  async orderStats() {
+    const statuses = Object.values(OrderStatus);
+    const counts: Record<string, number> = {};
+
+    for (const status of statuses) {
+      counts[status] = await this.prisma.order.count({ where: { status } });
+    }
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const todayOrders = await this.prisma.order.count({
+      where: { createdAt: { gte: todayStart } },
+    });
+
+    return { byStatus: counts, todayOrders };
+  }
+
   async auditReport(from?: Date, to?: Date) {
     return this.prisma.auditLog.findMany({
       where: this.buildDateFilter(from, to),
