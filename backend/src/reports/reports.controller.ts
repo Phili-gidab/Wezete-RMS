@@ -9,7 +9,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(ROLE_LEVEL.ADMIN)
+@Roles(ROLE_LEVEL.CASHIER) // Cashier+ can access reports (per proposal permission matrix)
 @Controller('reports')
 export class ReportsController {
   constructor(
@@ -85,6 +85,7 @@ export class ReportsController {
   }
 
   @Get('staff-activity')
+  @Roles(ROLE_LEVEL.ADMIN)
   staffActivity(@Query() query: ReportQueryDto) {
     return this.reportsService.staffActivity(
       query.from ? new Date(query.from) : undefined,
@@ -98,6 +99,7 @@ export class ReportsController {
   }
 
   @Get('audit')
+  @Roles(ROLE_LEVEL.ADMIN)
   auditReport(@Query() query: ReportQueryDto) {
     return this.reportsService.auditReport(
       query.from ? new Date(query.from) : undefined,

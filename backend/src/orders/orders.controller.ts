@@ -61,7 +61,7 @@ export class OrdersController {
   }
 
   @Patch(':id/status')
-  @Roles(ROLE_LEVEL.WAITER)
+  @Roles(ROLE_LEVEL.BARISTA) // Chef(3), Barista(2), Waiter(4)+ can update status per proposal
   updateStatus(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateOrderStatusDto,

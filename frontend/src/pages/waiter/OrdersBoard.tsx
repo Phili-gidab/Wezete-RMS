@@ -554,7 +554,7 @@ export default function OrdersBoard() {
         </div>
 
         {/* Right Panel: Order Detail or New Order Cart */}
-        <aside className="w-96 flex-shrink-0 bg-white flex flex-col">
+        <aside className="hidden lg:flex w-96 flex-shrink-0 bg-white flex-col">
           {mode === 'new' ? (
             <NewOrderPanel
               cart={cart} orderType={orderType} tableNumber={tableNumber} notes={notes} cartTotal={cartTotal}
@@ -577,6 +577,28 @@ export default function OrdersBoard() {
             </div>
           )}
         </aside>
+
+        {/* Mobile: floating cart/order button */}
+        <div className="lg:hidden fixed bottom-4 right-4 z-40">
+          {mode === 'new' && cart.length > 0 && (
+            <button
+              onClick={handleSubmit}
+              disabled={createOrder.isPending}
+              className="flex items-center gap-2 bg-[#0A3D39] text-white px-5 py-3 rounded-2xl shadow-xl text-sm font-bold"
+            >
+              Send to kitchen ({cart.length})
+            </button>
+          )}
+          {mode === 'orders' && selectedOrder && (
+            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-4 w-80 max-h-[50vh] overflow-y-auto">
+              <p className="text-sm font-bold text-slate-800 mb-2">{selectedOrder.orderNumber}</p>
+              {selectedOrder.items.map((item: any) => (
+                <p key={item.id} className="text-xs text-slate-600">{item.quantity}x {item.menuItem.name}</p>
+              ))}
+              <p className="text-sm font-bold text-[#0A3D39] mt-2">{formatETB(selectedOrder.total)}</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

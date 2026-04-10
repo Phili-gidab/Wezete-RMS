@@ -118,6 +118,11 @@ export class PaymentsService {
         data: { status: PaymentStatus.FAILED },
       });
 
+      // Notify on payment failure (proposal section 9)
+      this.notifications
+        .notifyPaymentFailed(order.orderNumber, error.message)
+        .catch(() => {});
+
       this.logger.error(
         `Chapa initialization failed for tx_ref=${txRef}: ${error.message}`,
       );

@@ -37,8 +37,8 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
       return;
     }
 
-    // Connect with JWT auth
-    const socket = io(WS_URL, {
+    // Connect to the /notifications namespace (must match backend gateway)
+    const socket = io(`${WS_URL}/notifications`, {
       auth: { token },
       transports: ['websocket', 'polling'],
       reconnectionAttempts: 5,
@@ -50,7 +50,7 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
     socket.on('connect', () => {
       // Join the role-specific room
       const room = ROLE_SOCKET_ROOMS[user.roleId];
-      socket.emit('join_room', room);
+      socket.emit('joinRoom', room);
     });
 
     // ── Global event listeners ──────────────────────────────────────────

@@ -115,6 +115,24 @@ export class OrdersService {
       this.logger.error(`Failed to notify new order: ${err.message}`);
     });
 
+    // Auto-trigger approval for large orders (proposal section 4.2)
+    const LARGE_ORDER_THRESHOLD = 5000; // ETB — configurable
+    if (total.greaterThan(LARGE_ORDER_THRESHOLD)) {
+      this.prisma.approvalRequest.create({
+        data: {
+          type: 'VOID', // using VOID as "LARGE_ORDER_OVERRIDE"
+          reason: `Large order override: total ETB ${total.toFixed(2)} exceeds threshold of ETB ${LARGE_ORDER_THRESHOLD}`,
+          metadata: { orderTotal: Number(total), threshold: LARGE_ORDER_THRESHOLD },
+          orderId: order.id,
+          requestedById: userId,
+        },
+      }).then(() => {
+        this.notifications.notifyApprovalNeeded(
+          order.id, 'LARGE_ORDER', `Order ${order.orderNumber} total ETB ${total.toFixed(2)} exceeds threshold`,
+        ).catch(() => {});
+      }).catch(() => {});
+    }
+
     return order;
   }
 
@@ -223,6 +241,11 @@ export class OrdersService {
         payment: true,
       },
     });
+
+    // Notify on every status change (proposal section 9)
+    this.notifications
+      .notifyOrderStatusChanged(updated.orderNumber, dto.status, updated.tableNumber ?? undefined)
+      .catch(() => {});
 
     // Fire-and-forget side-effects based on new status
     this.handleStatusSideEffects(updated).catch((err) => {
@@ -367,15 +390,18 @@ export class OrdersService {
           totalDeduction,
         );
 
-        // Check if item hit low-stock threshold after deduction
         const qty = Number(updated.quantity);
         const reorder = Number(updated.reorderLevel);
-        if (qty <= reorder) {
-          await this.notifications.notifyLowStock(
-            updated.name,
-            qty,
-            reorder,
-          );
+
+        // Auto-hide menu items when inventory hits zero (proposal section 9)
+        if (qty <= 0) {
+          await this.prisma.menuItem.updateMany({
+            where: { id: mapping.menuItemId },
+            data: { isAvailable: false },
+          });
+          await this.notifications.notifyOutOfStock(updated.name);
+        } else if (qty <= reorder) {
+          await this.notifications.notifyLowStock(updated.name, qty, reorder);
         }
       } catch (err) {
         this.logger.warn(

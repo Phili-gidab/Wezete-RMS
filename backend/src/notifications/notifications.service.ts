@@ -172,6 +172,64 @@ export class NotificationsService {
   }
 
   /* ------------------------------------------------------------------ */
+  /*  Missing notifications per proposal audit                            */
+  /* ------------------------------------------------------------------ */
+
+  /**
+   * Notify on every order status change (Waiter + Customer).
+   * Proposal Section 9: "Order Status Changed → Waiter, Customer → Immediate"
+   */
+  async notifyOrderStatusChanged(
+    orderNumber: string,
+    status: string,
+    tableNumber?: number,
+  ) {
+    const payload = {
+      type: 'ORDER_STATUS_CHANGED',
+      title: 'Order Status Updated',
+      message: `Order ${orderNumber} is now ${status}`,
+      orderNumber,
+      status,
+      tableNumber,
+    };
+    this.gateway.emitToRoom('waiter_station', 'orderStatusChanged', payload);
+    // TODO: emit to specific customer via user-targeted room when customer WS is implemented
+    this.logger.log(`orderStatusChanged → waiter_station: ${orderNumber} → ${status}`);
+  }
+
+  /**
+   * Notify on payment failure (Cashier + Manager).
+   * Proposal Section 9: "Payment Failed → Cashier, Manager → Immediate"
+   */
+  async notifyPaymentFailed(orderNumber: string, reason: string) {
+    const payload = {
+      type: 'PAYMENT_FAILED',
+      title: 'Payment Failed',
+      message: `Payment failed for order ${orderNumber}: ${reason}`,
+      orderNumber,
+    };
+    this.gateway.emitToRoom('waiter_station', 'paymentFailed', payload); // cashier in waiter_station room
+    this.gateway.emitToRoom('admin', 'paymentFailed', payload);
+    this.logger.log(`paymentFailed → cashier, admin: ${orderNumber}`);
+  }
+
+  /**
+   * Notify when item goes out-of-stock (Waiter + Manager).
+   * Proposal Section 9: "Out-of-Stock Item → Waiter, Manager → Immediate; item auto-hidden"
+   */
+  async notifyOutOfStock(itemName: string) {
+    const payload = {
+      type: 'OUT_OF_STOCK',
+      title: 'Item Out of Stock',
+      message: `${itemName} is now out of stock and has been hidden from the menu`,
+      itemName,
+    };
+    this.gateway.emitToRoom('waiter_station', 'outOfStock', payload);
+    this.gateway.emitToRoom('admin', 'outOfStock', payload);
+    this.logger.log(`outOfStock → waiter, admin: ${itemName}`);
+  }
+
+  /* ------------------------------------------------------------------ */
   /*  Private                                                             */
   /* ------------------------------------------------------------------ */
 

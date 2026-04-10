@@ -1,14 +1,12 @@
+import { useState } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import Sidebar from '../components/Sidebar';
 import { useAuthStore } from '../stores/useAuthStore';
 
-/**
- * Authenticated app shell: sidebar + scrollable content area.
- * Redirects to /login when there is no session.
- */
 export default function MainLayout() {
   const token = useAuthStore((s) => s.accessToken);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   if (!token) {
     return <Navigate to="/login" replace />;
@@ -16,14 +14,45 @@ export default function MainLayout() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Sidebar />
+      {/* Mobile header bar */}
+      <div className="lg:hidden sticky top-0 z-40 flex items-center justify-between bg-white border-b border-slate-200 px-4 py-3">
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className="p-1.5 rounded-lg hover:bg-slate-100"
+        >
+          <svg className="w-6 h-6 text-[#0A3D39]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+        <div className="flex items-center gap-2">
+          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-[#0A3D39] text-white text-xs font-bold">W</span>
+          <span className="text-sm font-semibold text-[#0A3D39]">Wezete</span>
+        </div>
+        <div className="w-6" />
+      </div>
 
-      {/* Main content — offset by sidebar width (w-56 = 14 rem) */}
-      <main className="ml-56 p-6">
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div
+          className="lg:hidden fixed inset-0 z-50 bg-black/40"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar — hidden on mobile, slide-in when open */}
+      <div className={`
+        fixed inset-y-0 left-0 z-50 transform transition-transform duration-200 ease-in-out
+        lg:translate-x-0 lg:z-30
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
+        <Sidebar onClose={() => setSidebarOpen(false)} />
+      </div>
+
+      {/* Main content */}
+      <main className="lg:ml-56 p-4 sm:p-6">
         <Outlet />
       </main>
 
-      {/* Global toast notifications */}
       <Toaster
         position="top-right"
         toastOptions={{

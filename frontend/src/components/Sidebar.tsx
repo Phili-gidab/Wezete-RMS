@@ -96,7 +96,7 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 // ─── Component ─────────────────────────────────────────────────────────────
-export default function Sidebar() {
+export default function Sidebar({ onClose }: { onClose?: () => void }) {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
@@ -115,13 +115,22 @@ export default function Sidebar() {
   const roleLabel = roleId ? ROLE_LABELS[roleId] : '';
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 flex w-56 flex-col bg-white border-r border-slate-200">
+    <aside className="flex w-56 h-full flex-col bg-white border-r border-slate-200">
       {/* ---- Brand ---- */}
-      <div className="flex items-center gap-2 px-5 py-6">
-        <span className="flex h-8 w-8 items-center justify-center rounded-md bg-forest text-white text-sm font-bold">
-          W
-        </span>
-        <span className="text-lg font-semibold text-forest">Wezete</span>
+      <div className="flex items-center justify-between px-5 py-6">
+        <div className="flex items-center gap-2">
+          <span className="flex h-8 w-8 items-center justify-center rounded-md bg-[#0A3D39] text-white text-sm font-bold">
+            W
+          </span>
+          <span className="text-lg font-semibold text-[#0A3D39]">Wezete</span>
+        </div>
+        {onClose && (
+          <button onClick={onClose} className="lg:hidden p-1 rounded hover:bg-slate-100">
+            <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* ---- Navigation ---- */}
@@ -131,11 +140,12 @@ export default function Sidebar() {
             key={to}
             to={to}
             end={to === '/admin'}
+            onClick={() => onClose?.()}
             className={({ isActive }) =>
               `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                 isActive
-                  ? 'bg-brand text-forest'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-forest'
+                  ? 'bg-[#0A3D39]/10 text-[#0A3D39]'
+                  : 'text-slate-600 hover:bg-slate-100 hover:text-[#0A3D39]'
               }`
             }
           >
