@@ -94,6 +94,7 @@ export class OrdersService {
           orderNumber,
           orderType: dto.orderType,
           tableNumber: dto.tableNumber,
+          pickupTime: dto.pickupTime ? new Date(dto.pickupTime) : undefined,
           notes: dto.notes,
           subtotal,
           tax,
@@ -116,11 +117,11 @@ export class OrdersService {
     });
 
     // Auto-trigger approval for large orders (proposal section 4.2)
-    const LARGE_ORDER_THRESHOLD = 5000; // ETB — configurable
+    const LARGE_ORDER_THRESHOLD = 5000; // ETB
     if (total.greaterThan(LARGE_ORDER_THRESHOLD)) {
       this.prisma.approvalRequest.create({
         data: {
-          type: 'VOID', // using VOID as "LARGE_ORDER_OVERRIDE"
+          type: 'LARGE_ORDER',
           reason: `Large order override: total ETB ${total.toFixed(2)} exceeds threshold of ETB ${LARGE_ORDER_THRESHOLD}`,
           metadata: { orderTotal: Number(total), threshold: LARGE_ORDER_THRESHOLD },
           orderId: order.id,
@@ -212,6 +213,7 @@ export class OrdersService {
 
   /**
    * Update order status with forward-only transition validation.
+   * Blocks progression if there are pending approval requests.
    * Triggers side-effects: notifications and inventory deduction.
    */
   async updateStatus(id: string, dto: UpdateOrderStatusDto) {
@@ -222,6 +224,19 @@ export class OrdersService {
 
     if (!order) {
       throw new NotFoundException(`Order with ID "${id}" not found`);
+    }
+
+    // Block progression if there are pending approval requests (proposal 4.2)
+    if (dto.status !== OrderStatus.CANCELLED) {
+      const pendingApprovals = await this.prisma.approvalRequest.count({
+        where: { orderId: id, status: 'PENDING' },
+      });
+
+      if (pendingApprovals > 0) {
+        throw new BadRequestException(
+          `Order has ${pendingApprovals} pending approval(s). Resolve approvals before changing status.`,
+        );
+      }
     }
 
     const allowed = STATUS_TRANSITIONS[order.status];
@@ -338,6 +353,145 @@ export class OrdersService {
       doc.text('Wezete Technology', { align: 'center' });
 
       doc.end();
+    });
+  }
+
+  /**
+   * Apply a discount to an order. If discount > 10%, creates an approval request
+   * and does NOT apply immediately — blocks until approved (proposal 4.2).
+   */
+  async applyDiscount(id: string, discountPercent: number, userId: string) {
+    const order = await this.prisma.order.findUnique({ where: { id } });
+    if (!order) throw new NotFoundException(`Order ${id} not found`);
+
+    if (order.status === OrderStatus.COMPLETE || order.status === OrderStatus.CANCELLED) {
+      throw new BadRequestException('Cannot discount a completed or cancelled order');
+    }
+
+    if (discountPercent > 10) {
+      // Create approval request — discount will be applied via approval side-effect
+      await this.prisma.approvalRequest.create({
+        data: {
+          type: 'DISCOUNT',
+          reason: `Discount of ${discountPercent}% requested (exceeds 10% threshold)`,
+          metadata: { discountPercent },
+          orderId: id,
+          requestedById: userId,
+        },
+      });
+
+      this.notifications.notifyApprovalNeeded(
+        id, 'DISCOUNT', `${discountPercent}% discount requested for order ${order.orderNumber}`,
+      ).catch(() => {});
+
+      return { pending: true, message: 'Discount requires admin approval (>10%)' };
+    }
+
+    // Apply immediately for ≤10%
+    const subtotal = new Prisma.Decimal(order.subtotal.toString());
+    const discountAmount = subtotal.mul(discountPercent).div(100).toDecimalPlaces(2);
+    const tax = new Prisma.Decimal(order.tax.toString());
+    const newTotal = subtotal.add(tax).sub(discountAmount);
+
+    return this.prisma.order.update({
+      where: { id },
+      data: {
+        discount: discountAmount,
+        total: newTotal.greaterThan(0) ? newTotal : new Prisma.Decimal(0),
+      },
+      include: { items: { include: { menuItem: true } } },
+    });
+  }
+
+  /**
+   * Update order items — only allowed when order is still PENDING (before kitchen acceptance).
+   * Proposal: "Modifications locked after kitchen acceptance"
+   */
+  async updateOrder(
+    id: string,
+    dto: { items?: CreateOrderDto['items']; notes?: string; tableNumber?: number },
+  ) {
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+      include: { items: true },
+    });
+
+    if (!order) throw new NotFoundException(`Order ${id} not found`);
+
+    if (order.status !== OrderStatus.PENDING) {
+      throw new BadRequestException(
+        `Order modifications are locked after status PENDING (current: ${order.status})`,
+      );
+    }
+
+    // If items are being updated, recalculate totals
+    if (dto.items && dto.items.length > 0) {
+      const menuItemIds = dto.items.map((item) => item.menuItemId);
+      const menuItems = await this.prisma.menuItem.findMany({
+        where: { id: { in: menuItemIds } },
+      });
+
+      if (menuItems.length !== menuItemIds.length) {
+        throw new BadRequestException('One or more menu items not found');
+      }
+
+      const unavailable = menuItems.filter((m) => !m.isAvailable);
+      if (unavailable.length > 0) {
+        throw new BadRequestException(
+          `Menu items unavailable: ${unavailable.map((m) => m.name).join(', ')}`,
+        );
+      }
+
+      const priceMap = new Map(
+        menuItems.map((m) => [m.id, new Prisma.Decimal(m.price.toString())]),
+      );
+
+      let subtotal = new Prisma.Decimal(0);
+      const itemsData = dto.items.map((item) => {
+        const unitPrice = priceMap.get(item.menuItemId)!;
+        const totalPrice = unitPrice.mul(item.quantity);
+        subtotal = subtotal.add(totalPrice);
+        return {
+          menuItemId: item.menuItemId,
+          quantity: item.quantity,
+          unitPrice,
+          totalPrice,
+          customisations: item.customisations ?? Prisma.JsonNull,
+          dietaryNotes: item.dietaryNotes ?? Prisma.JsonNull,
+        };
+      });
+
+      const tax = subtotal.mul(TAX_RATE).toDecimalPlaces(2);
+      const total = subtotal.add(tax);
+
+      return this.prisma.$transaction(async (tx) => {
+        // Delete old items and create new ones
+        await tx.orderItem.deleteMany({ where: { orderId: id } });
+
+        return tx.order.update({
+          where: { id },
+          data: {
+            subtotal,
+            tax,
+            total,
+            discount: 0,
+            notes: dto.notes ?? order.notes,
+            tableNumber: dto.tableNumber ?? order.tableNumber,
+            items: { create: itemsData },
+          },
+          include: { items: { include: { menuItem: true } } },
+        });
+      });
+    }
+
+    // If only updating notes/tableNumber (no items change)
+    return this.prisma.order.update({
+      where: { id },
+      data: {
+        ...(dto.notes !== undefined && { notes: dto.notes }),
+        ...(dto.tableNumber !== undefined && { tableNumber: dto.tableNumber }),
+      },
+      include: { items: { include: { menuItem: true } } },
     });
   }
 

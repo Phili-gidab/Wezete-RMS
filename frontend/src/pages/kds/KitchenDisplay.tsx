@@ -228,11 +228,23 @@ function OrderCard({ order, station, onAdvance, advancePending, onFlag }: OrderC
       {/* ── Items ── */}
       <div className="flex-1 space-y-1.5 px-4 pb-3">
         {visibleItems.map((item: any) => (
-          <div key={item.id} className="flex items-center gap-2">
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-slate-700 text-xs font-bold text-slate-200">
-              {item.quantity}
-            </span>
-            <span className="text-sm text-slate-200 leading-tight">{item.menuItem?.name}</span>
+          <div key={item.id}>
+            <div className="flex items-center gap-2">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-slate-700 text-xs font-bold text-slate-200">
+                {item.quantity}
+              </span>
+              <span className="text-sm text-slate-200 leading-tight">{item.menuItem?.name}</span>
+            </div>
+            {item.customisations && Object.keys(item.customisations).length > 0 && (
+              <p className="ml-8 text-[11px] text-blue-300">
+                {Object.entries(item.customisations).map(([k, v]) => `${k}: ${v}`).join(', ')}
+              </p>
+            )}
+            {item.dietaryNotes && Object.keys(item.dietaryNotes).length > 0 && (
+              <p className="ml-8 text-[11px] text-amber-300">
+                {Object.entries(item.dietaryNotes).map(([k, v]) => `${k}: ${v}`).join(', ')}
+              </p>
+            )}
           </div>
         ))}
       </div>

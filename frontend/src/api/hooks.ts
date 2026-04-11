@@ -117,7 +117,7 @@ export function useDeleteMenuItem() {
 
 // ──────────── Orders ────────────
 
-export function useOrders(params?: { status?: string; page?: number; limit?: number }) {
+export function useOrders(params?: { status?: string; userId?: string; page?: number; limit?: number }) {
   return useQuery({
     queryKey: ['orders', params],
     queryFn: () => api.get('/api/v1/orders', { params }).then((r) => r.data),
@@ -362,6 +362,92 @@ export function useDownloadReceipt() {
   return useMutation({
     mutationFn: (orderId: string) =>
       downloadBlob(`/api/v1/orders/${orderId}/receipt`, `receipt-${orderId.slice(0, 8)}.pdf`),
+  });
+}
+
+// ──────────── Notifications ────────────
+
+export function useNotifications(unreadOnly = false) {
+  return useQuery({
+    queryKey: ['notifications', unreadOnly],
+    queryFn: () =>
+      api.get('/api/v1/notifications', { params: { unreadOnly } }).then((r) => r.data),
+    refetchInterval: 30000,
+  });
+}
+
+export function useUnreadCount() {
+  return useQuery({
+    queryKey: ['notifications', 'unread-count'],
+    queryFn: () =>
+      api.get('/api/v1/notifications/unread-count').then((r) => r.data),
+    refetchInterval: 15000,
+  });
+}
+
+export function useMarkNotificationRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.patch(`/api/v1/notifications/${id}/read`).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['notifications'] });
+    },
+  });
+}
+
+export function useMarkAllNotificationsRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      api.patch('/api/v1/notifications/read-all').then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['notifications'] });
+    },
+  });
+}
+
+// ──────────── Settings ────────────
+
+export function useSettings() {
+  return useQuery({
+    queryKey: ['settings'],
+    queryFn: () => api.get('/api/v1/settings').then((r) => r.data),
+  });
+}
+
+export function useUpdateSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Record<string, string>) =>
+      api.patch('/api/v1/settings', data).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['settings'] }),
+  });
+}
+
+// ──────────── Sales Comparison ────────────
+
+export function useSalesComparison(from?: string, to?: string) {
+  return useQuery({
+    queryKey: ['reports', 'sales-comparison', from, to],
+    queryFn: () =>
+      api.get('/api/v1/reports/sales/comparison', { params: { from, to } }).then((r) => r.data),
+  });
+}
+
+// ──────────── Payment Report Exports ────────────
+
+export function useExportPaymentPdf() {
+  return useMutation({
+    mutationFn: (params?: { from?: string; to?: string }) =>
+      downloadBlob('/api/v1/reports/payments/export/pdf', `payment-report.pdf`, params),
+  });
+}
+
+export function useExportPaymentExcel() {
+  return useMutation({
+    mutationFn: (params?: { from?: string; to?: string }) =>
+      downloadBlob('/api/v1/reports/payments/export/xlsx', `payment-report.xlsx`, params),
   });
 }
 

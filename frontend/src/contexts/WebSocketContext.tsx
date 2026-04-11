@@ -9,6 +9,7 @@ import { io, type Socket } from 'socket.io-client';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../stores/useAuthStore';
 import { ROLE_SOCKET_ROOMS } from '../constants/roles';
+import { queryClient } from '../App';
 
 // ─── Context ────────────────────────────────────────────────────────────────
 const WebSocketContext = createContext<Socket | null>(null);
@@ -53,17 +54,64 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
       socket.emit('joinRoom', room);
     });
 
-    // ── Global event listeners ──────────────────────────────────────────
-    socket.on('order_status_changed', (data: { orderId: string; status: string }) => {
+    // ── Global event listeners with cache invalidation ─────────────────
+
+    socket.on('orderStatusChanged', (data: any) => {
+      toast(`Order ${data.orderNumber ?? data.orderId} → ${data.status}`, { icon: '📋' });
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+    });
+
+    socket.on('newOrder', () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+    });
+
+    socket.on('orderReady', (data: any) => {
+      toast.success(`Order ${data.message ?? 'ready'}`, { icon: '✅' });
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+    });
+
+    socket.on('paymentReceived', (data: any) => {
+      toast.success(data.message ?? 'Payment received', { icon: '💰' });
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['reports'] });
+    });
+
+    socket.on('paymentFailed', (data: any) => {
+      toast.error(`Payment failed: ${data.message ?? data.orderNumber}`);
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+    });
+
+    socket.on('lowStock', (data: any) => {
+      toast.error(`Low stock: ${data.itemName} (${data.currentQty} left)`);
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+    });
+
+    socket.on('outOfStock', (data: any) => {
+      toast.error(`Out of stock: ${data.itemName}`);
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['menuItems'] });
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+    });
+
+    socket.on('approvalNeeded', (data: any) => {
+      toast(data.message ?? 'New approval needed', { icon: '⚠️' });
+      queryClient.invalidateQueries({ queryKey: ['approvals'] });
+    });
+
+    // Legacy event names (in case frontend uses them)
+    socket.on('order_status_changed', (data: any) => {
       toast(`Order #${data.orderId} → ${data.status}`, { icon: '📋' });
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
     });
 
-    socket.on('low_stock_alert', (data: { item: string; remaining: number }) => {
+    socket.on('low_stock_alert', (data: any) => {
       toast.error(`Low stock: ${data.item} (${data.remaining} left)`);
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
     });
 
-    socket.on('payment_failed', (data: { orderId: string; reason: string }) => {
+    socket.on('payment_failed', (data: any) => {
       toast.error(`Payment failed for #${data.orderId}: ${data.reason}`);
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
     });
 
     socket.on('connect_error', () => {

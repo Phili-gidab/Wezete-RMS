@@ -2,6 +2,8 @@ import {
   Injectable,
   UnauthorizedException,
   ConflictException,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -12,9 +14,13 @@ import { JwtPayload, ROLE_LEVEL } from './strategies/jwt.strategy';
 import { Role } from '@prisma/client';
 
 const REFRESH_TOKEN_EXPIRY_DAYS = 7;
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
 
 @Injectable()
 export class AuthService {
+  private loginAttempts = new Map<string, { count: number; lockedUntil: number }>();
+
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
@@ -45,20 +51,47 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
+    // Brute-force protection: check lockout
+    const attempt = this.loginAttempts.get(dto.email);
+    if (attempt && attempt.lockedUntil > Date.now()) {
+      const retryAfterSec = Math.ceil((attempt.lockedUntil - Date.now()) / 1000);
+      throw new HttpException(
+        { message: `Too many login attempts. Try again in ${retryAfterSec} seconds.`, retryAfter: retryAfterSec },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
 
     if (!user || !user.isActive) {
+      this.recordFailedAttempt(dto.email);
       throw new UnauthorizedException('Invalid credentials');
     }
 
     const passwordValid = await bcrypt.compare(dto.password, user.password);
     if (!passwordValid) {
+      this.recordFailedAttempt(dto.email);
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    // Reset attempts on successful login
+    this.loginAttempts.delete(dto.email);
+
     return this.buildTokenResponse(user);
+  }
+
+  private recordFailedAttempt(email: string) {
+    const attempt = this.loginAttempts.get(email) ?? { count: 0, lockedUntil: 0 };
+    attempt.count++;
+
+    if (attempt.count >= MAX_LOGIN_ATTEMPTS) {
+      attempt.lockedUntil = Date.now() + LOCKOUT_DURATION_MS;
+      attempt.count = 0;
+    }
+
+    this.loginAttempts.set(email, attempt);
   }
 
   async refresh(refreshToken: string) {

@@ -52,6 +52,7 @@ enum ApprovalType {
   VOID
   DISCOUNT
   REFUND
+  LARGE_ORDER
 }
 
 enum ApprovalStatus {
@@ -169,6 +170,7 @@ model Order {
   status      OrderStatus @default(PENDING)
   orderType   String      @map("order_type") // DINE_IN, TAKEAWAY, DELIVERY
   tableNumber Int?        @map("table_number")
+  pickupTime  DateTime?   @map("pickup_time")
   subtotal    Decimal     @db.Decimal(10, 2) @default(0)
   tax         Decimal     @db.Decimal(10, 2) @default(0)
   discount    Decimal     @db.Decimal(10, 2) @default(0)
@@ -214,6 +216,7 @@ model Payment {
   status    PaymentStatus @default(PENDING)
   txRef     String?       @unique @map("tx_ref") // Chapa transaction reference
   chapaRef  String?       @unique @map("chapa_ref") // Chapa's own reference after verify
+  channel   String?       // Payment channel: telebirr, cbe_birr, awash, etc.
   paidAt    DateTime?     @map("paid_at")
   createdAt DateTime      @default(now()) @map("created_at")
   updatedAt DateTime      @updatedAt @map("updated_at")
@@ -262,4 +265,43 @@ model ApprovalRequest {
 
   @@index([status])
   @@map("approval_requests")
+}
+
+model Notification {
+  id            String   @id @default(uuid())
+  type          String   // NEW_ORDER, LOW_STOCK, ORDER_READY, APPROVAL_NEEDED, PAYMENT_RECEIVED, etc.
+  title         String
+  body          String
+  recipientRole String?  @map("recipient_role") // target role (ADMIN, WAITER, etc.)
+  recipientId   String?  @map("recipient_id")   // specific user id (optional)
+  isRead        Boolean  @default(false) @map("is_read")
+  metadata      Json?    @db.JsonB
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([recipientRole, isRead])
+  @@index([recipientId, isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model Setting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+}
+
+model ReconciliationLog {
+  id           String   @id @default(uuid())
+  date         DateTime // the date being reconciled
+  totalExpected Decimal  @db.Decimal(10, 2) @map("total_expected")
+  totalReceived Decimal  @db.Decimal(10, 2) @map("total_received")
+  discrepancies Json?    @db.JsonB // array of { txRef, expected, actual, reason }
+  status       String   // OK, DISCREPANCY
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([date])
+  @@map("reconciliation_logs")
 }

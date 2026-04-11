@@ -194,6 +194,12 @@ export class ApprovalsService {
         this.logger.log(`Refund approved for order ${approval.orderId}`);
         break;
       }
+
+      case ApprovalType.LARGE_ORDER: {
+        // Large order approved — no side-effect needed, just unblocks progression
+        this.logger.log(`Large order approved for order ${approval.orderId}`);
+        break;
+      }
     }
   }
 }

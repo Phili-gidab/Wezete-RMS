@@ -130,9 +130,7 @@ export class NotificationsService {
       reorderLevel,
     };
 
-    this.gateway.emitToRoom('admin', 'lowStock', payload);
-    this.gateway.emitToRoom('inventory', 'lowStock', payload);
-
+    await this.persistAndEmit(['admin', 'inventory'], 'lowStock', payload, 'INVENTORY_MANAGER');
     this.logger.log(`lowStock → admin, inventory: ${itemName}`);
   }
 
@@ -146,7 +144,7 @@ export class NotificationsService {
       title: 'Order Ready',
       message: `Order ${orderNumber} is ready${tableNumber ? ` for table ${tableNumber}` : ' for pickup'}`,
     };
-    this.gateway.emitToRoom('waiter_station', 'orderReady', payload);
+    await this.persistAndEmit('waiter_station', 'orderReady', payload, 'WAITER');
     this.logger.log(`orderReady → waiter_station: ${orderNumber}`);
   }
 
@@ -157,7 +155,7 @@ export class NotificationsService {
       message: reason,
       approvalId,
     };
-    this.gateway.emitToRoom('admin', 'approvalNeeded', payload);
+    await this.persistAndEmit('admin', 'approvalNeeded', payload, 'ADMIN');
     this.logger.log(`approvalNeeded → admin: ${approvalId}`);
   }
 
@@ -167,7 +165,7 @@ export class NotificationsService {
       title: 'Payment Received',
       message: `${method} payment of ${amount} for order ${orderNumber}`,
     };
-    this.gateway.emitToRoom('waiter_station', 'paymentReceived', payload);
+    await this.persistAndEmit('waiter_station', 'paymentReceived', payload, 'CASHIER');
     this.logger.log(`paymentReceived → waiter_station: ${orderNumber}`);
   }
 
@@ -192,15 +190,10 @@ export class NotificationsService {
       status,
       tableNumber,
     };
-    this.gateway.emitToRoom('waiter_station', 'orderStatusChanged', payload);
-    // TODO: emit to specific customer via user-targeted room when customer WS is implemented
+    await this.persistAndEmit('waiter_station', 'orderStatusChanged', payload, 'WAITER');
     this.logger.log(`orderStatusChanged → waiter_station: ${orderNumber} → ${status}`);
   }
 
-  /**
-   * Notify on payment failure (Cashier + Manager).
-   * Proposal Section 9: "Payment Failed → Cashier, Manager → Immediate"
-   */
   async notifyPaymentFailed(orderNumber: string, reason: string) {
     const payload = {
       type: 'PAYMENT_FAILED',
@@ -208,15 +201,10 @@ export class NotificationsService {
       message: `Payment failed for order ${orderNumber}: ${reason}`,
       orderNumber,
     };
-    this.gateway.emitToRoom('waiter_station', 'paymentFailed', payload); // cashier in waiter_station room
-    this.gateway.emitToRoom('admin', 'paymentFailed', payload);
+    await this.persistAndEmit(['waiter_station', 'admin'], 'paymentFailed', payload, 'CASHIER');
     this.logger.log(`paymentFailed → cashier, admin: ${orderNumber}`);
   }
 
-  /**
-   * Notify when item goes out-of-stock (Waiter + Manager).
-   * Proposal Section 9: "Out-of-Stock Item → Waiter, Manager → Immediate; item auto-hidden"
-   */
   async notifyOutOfStock(itemName: string) {
     const payload = {
       type: 'OUT_OF_STOCK',
@@ -224,14 +212,125 @@ export class NotificationsService {
       message: `${itemName} is now out of stock and has been hidden from the menu`,
       itemName,
     };
-    this.gateway.emitToRoom('waiter_station', 'outOfStock', payload);
-    this.gateway.emitToRoom('admin', 'outOfStock', payload);
+    await this.persistAndEmit(['waiter_station', 'admin'], 'outOfStock', payload, 'WAITER');
     this.logger.log(`outOfStock → waiter, admin: ${itemName}`);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  Notification persistence & retrieval                                */
+  /* ------------------------------------------------------------------ */
+
+  /**
+   * Get notifications for a user (by role and/or userId).
+   */
+  async getNotifications(
+    userRole: string,
+    userId: string,
+    options?: { unreadOnly?: boolean; limit?: number; offset?: number },
+  ) {
+    const { unreadOnly = false, limit = 50, offset = 0 } = options ?? {};
+
+    const roleRoom = this.roleToRoom(userRole);
+
+    return this.prisma.notification.findMany({
+      where: {
+        AND: [
+          unreadOnly ? { isRead: false } : {},
+          {
+            OR: [
+              { recipientId: userId },
+              { recipientRole: userRole },
+              // Admin sees admin-targeted notifications
+              ...(roleRoom === 'admin' ? [{ recipientRole: 'ADMIN' }, { recipientRole: 'SUPER_ADMIN' }] : []),
+            ],
+          },
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      skip: offset,
+    });
+  }
+
+  /**
+   * Count unread notifications for a user.
+   */
+  async getUnreadCount(userRole: string, userId: string): Promise<number> {
+    return this.prisma.notification.count({
+      where: {
+        isRead: false,
+        OR: [
+          { recipientId: userId },
+          { recipientRole: userRole },
+          ...(userRole === 'ADMIN' || userRole === 'SUPER_ADMIN'
+            ? [{ recipientRole: 'ADMIN' }, { recipientRole: 'SUPER_ADMIN' }]
+            : []),
+        ],
+      },
+    });
+  }
+
+  /**
+   * Mark a single notification as read.
+   */
+  async markAsRead(id: string) {
+    return this.prisma.notification.update({
+      where: { id },
+      data: { isRead: true },
+    });
+  }
+
+  /**
+   * Mark all notifications as read for a user.
+   */
+  async markAllAsRead(userRole: string, userId: string) {
+    await this.prisma.notification.updateMany({
+      where: {
+        isRead: false,
+        OR: [
+          { recipientId: userId },
+          { recipientRole: userRole },
+        ],
+      },
+      data: { isRead: true },
+    });
+    return { success: true };
   }
 
   /* ------------------------------------------------------------------ */
   /*  Private                                                             */
   /* ------------------------------------------------------------------ */
+
+  /**
+   * Persist a notification to the database, then emit via WebSocket.
+   */
+  private async persistAndEmit(
+    room: string | string[],
+    event: string,
+    payload: { type: string; title: string; message: string; [key: string]: any },
+    recipientRole?: string,
+    recipientId?: string,
+  ) {
+    // Persist to DB
+    await this.prisma.notification.create({
+      data: {
+        type: payload.type,
+        title: payload.title,
+        body: payload.message,
+        recipientRole: recipientRole ?? null,
+        recipientId: recipientId ?? null,
+        metadata: payload,
+      },
+    }).catch((err) => {
+      this.logger.warn(`Failed to persist notification: ${err.message}`);
+    });
+
+    // Emit via WebSocket
+    const rooms = Array.isArray(room) ? room : [room];
+    for (const r of rooms) {
+      this.gateway.emitToRoom(r, event, payload);
+    }
+  }
 
   private roleToRoom(role: string): string | null {
     const map: Record<string, string> = {

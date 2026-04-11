@@ -60,6 +60,14 @@ export class OrdersController {
     return this.ordersService.findOne(id);
   }
 
+  @Patch(':id')
+  updateOrder(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: any,
+  ) {
+    return this.ordersService.updateOrder(id, dto);
+  }
+
   @Patch(':id/status')
   @Roles(ROLE_LEVEL.BARISTA) // Chef(3), Barista(2), Waiter(4)+ can update status per proposal
   updateStatus(
@@ -67,6 +75,16 @@ export class OrdersController {
     @Body() dto: UpdateOrderStatusDto,
   ) {
     return this.ordersService.updateStatus(id, dto);
+  }
+
+  @Post(':id/discount')
+  @Roles(ROLE_LEVEL.WAITER)
+  applyDiscount(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: { discountPercent: number },
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.ordersService.applyDiscount(id, dto.discountPercent, userId);
   }
 
   @Get(':id/receipt')

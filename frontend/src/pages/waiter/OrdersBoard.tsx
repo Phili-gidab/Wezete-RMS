@@ -15,7 +15,7 @@ type OrderStatus =
 
 interface MenuItem { id: string; name: string; price: number; description?: string; prepTime?: number; }
 interface Category { id: string; name: string; menuItems: MenuItem[]; }
-interface OrderItem { id: string; quantity: number; unitPrice: number; totalPrice: number; menuItem: { name: string }; }
+interface OrderItem { id: string; quantity: number; unitPrice: number; totalPrice: number; menuItem: { name: string }; customisations?: Record<string, any>; dietaryNotes?: Record<string, any>; }
 interface Order {
   id: string; orderNumber: string; status: OrderStatus; orderType: 'DINE_IN' | 'TAKEAWAY';
   tableNumber?: number; subtotal: number; tax: number; discount: number; total: number;
@@ -146,7 +146,16 @@ function OrderDetailPanel({ order, onStatusChange, isUpdating }: {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-slate-800">{item.menuItem.name}</p>
-                  <button className="text-xs text-blue-500 hover:underline mt-0.5">Customize</button>
+                  {item.customisations && Object.keys(item.customisations).length > 0 && (
+                    <p className="text-[11px] text-blue-500 mt-0.5">
+                      {Object.entries(item.customisations).map(([k, v]) => `${k}: ${v}`).join(', ')}
+                    </p>
+                  )}
+                  {item.dietaryNotes && Object.keys(item.dietaryNotes).length > 0 && (
+                    <p className="text-[11px] text-amber-600 mt-0.5">
+                      {Object.entries(item.dietaryNotes).map(([k, v]) => `${k}: ${v}`).join(', ')}
+                    </p>
+                  )}
                 </div>
               </div>
               <span className="text-sm font-semibold text-slate-800">{formatETB(item.totalPrice)}</span>

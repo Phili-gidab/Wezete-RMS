@@ -17,6 +17,7 @@ import KitchenDisplay from './pages/kds/KitchenDisplay';
 import CashierDashboard from './pages/cashier/CashierDashboard';
 import InventoryManagement from './pages/inventory/InventoryManagement';
 import CustomerMenu from './pages/customer/CustomerMenu';
+import OrderTracking from './pages/customer/OrderTracking';
 
 const router = createBrowserRouter([
   // Root — redirect to role-appropriate home
@@ -85,6 +86,7 @@ const router = createBrowserRouter([
     element: <ProtectedRoute allowedRoles={[1]} />,
     children: [
       { path: '/customer/menu', element: <CustomerMenu /> },
+      { path: '/customer/orders', element: <OrderTracking /> },
     ],
   },
 ]);

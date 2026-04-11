@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import Sidebar from '../components/Sidebar';
+import NotificationBell from '../components/NotificationBell';
 import { useAuthStore } from '../stores/useAuthStore';
 
 export default function MainLayout() {
@@ -28,7 +29,7 @@ export default function MainLayout() {
           <span className="flex h-7 w-7 items-center justify-center rounded-md bg-[#0A3D39] text-white text-xs font-bold">W</span>
           <span className="text-sm font-semibold text-[#0A3D39]">Wezete</span>
         </div>
-        <div className="w-6" />
+        <NotificationBell />
       </div>
 
       {/* Mobile sidebar overlay */}
@@ -50,6 +51,9 @@ export default function MainLayout() {
 
       {/* Main content */}
       <main className="lg:ml-56 p-4 sm:p-6">
+        <div className="hidden lg:flex justify-end mb-4">
+          <NotificationBell />
+        </div>
         <Outlet />
       </main>
 

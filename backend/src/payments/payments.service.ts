@@ -7,10 +7,11 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
-import { PaymentMethod, PaymentStatus, OrderStatus } from '@prisma/client';
+import { PaymentMethod, PaymentStatus, OrderStatus, Prisma } from '@prisma/client';
 import * as crypto from 'crypto';
 import axios, { AxiosError } from 'axios';
 
@@ -182,6 +183,7 @@ export class PaymentsService {
         data: {
           status: PaymentStatus.SUCCESS,
           chapaRef: verified.chapaRef,
+          channel: payload.payment_type || payload.channel || null,
           paidAt: new Date(),
         },
       });
@@ -303,6 +305,130 @@ export class PaymentsService {
     }
 
     return payment;
+  }
+
+  // ═══════════════ Scheduled Jobs ═══════════════
+
+  /**
+   * Expire stale PENDING Chapa payments older than 15 minutes (proposal 5.2).
+   * Runs every 5 minutes.
+   */
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  async expireStalePayments() {
+    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+
+    const stalePayments = await this.prisma.payment.findMany({
+      where: {
+        status: PaymentStatus.PENDING,
+        method: PaymentMethod.CHAPA,
+        createdAt: { lt: fifteenMinutesAgo },
+      },
+      include: { order: true },
+    });
+
+    for (const payment of stalePayments) {
+      await this.prisma.payment.update({
+        where: { id: payment.id },
+        data: { status: PaymentStatus.FAILED },
+      });
+
+      this.logger.log(`Expired stale payment ${payment.txRef} (>15 min)`);
+
+      if (payment.order) {
+        this.notifications
+          .notifyPaymentFailed(payment.order.orderNumber, 'Payment timed out after 15 minutes')
+          .catch(() => {});
+      }
+    }
+
+    if (stalePayments.length > 0) {
+      this.logger.log(`Expired ${stalePayments.length} stale payment(s)`);
+    }
+  }
+
+  /**
+   * Nightly Chapa reconciliation — runs at midnight (proposal 5.4).
+   * Verifies all SUCCESS Chapa payments for the day against Chapa API.
+   */
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async nightlyReconciliation() {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(startOfDay);
+    endOfDay.setDate(endOfDay.getDate() + 1);
+
+    // Look at yesterday's payments
+    const yesterday = new Date(startOfDay);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const chapaPayments = await this.prisma.payment.findMany({
+      where: {
+        method: PaymentMethod.CHAPA,
+        status: PaymentStatus.SUCCESS,
+        paidAt: { gte: yesterday, lt: startOfDay },
+      },
+    });
+
+    if (chapaPayments.length === 0) {
+      this.logger.log('Nightly reconciliation: no Chapa payments to reconcile');
+      return;
+    }
+
+    let totalExpected = new Prisma.Decimal(0);
+    let totalReceived = new Prisma.Decimal(0);
+    const discrepancies: Array<{ txRef: string; expected: number; actual: number; reason: string }> = [];
+
+    for (const payment of chapaPayments) {
+      totalExpected = totalExpected.add(payment.amount);
+
+      try {
+        const verified = await this.verifyWithChapa(payment.txRef!);
+        if (verified.success) {
+          totalReceived = totalReceived.add(payment.amount);
+        } else {
+          discrepancies.push({
+            txRef: payment.txRef!,
+            expected: Number(payment.amount),
+            actual: 0,
+            reason: verified.reason || 'Verification failed',
+          });
+        }
+      } catch {
+        discrepancies.push({
+          txRef: payment.txRef!,
+          expected: Number(payment.amount),
+          actual: 0,
+          reason: 'API error during verification',
+        });
+      }
+    }
+
+    const status = discrepancies.length > 0 ? 'DISCREPANCY' : 'OK';
+
+    await this.prisma.reconciliationLog.create({
+      data: {
+        date: yesterday,
+        totalExpected,
+        totalReceived,
+        discrepancies: discrepancies.length > 0 ? discrepancies : undefined,
+        status,
+      },
+    });
+
+    if (discrepancies.length > 0) {
+      this.logger.warn(`Reconciliation found ${discrepancies.length} discrepancies`);
+      this.notifications
+        .notifyApprovalNeeded(
+          'reconciliation',
+          'RECONCILIATION',
+          `Nightly Chapa reconciliation found ${discrepancies.length} discrepancy(ies). Total expected: ${totalExpected}, received: ${totalReceived}`,
+        )
+        .catch(() => {});
+    } else {
+      this.logger.log(
+        `Reconciliation OK: ${chapaPayments.length} payments, total ${totalExpected}`,
+      );
+    }
   }
 
   // ═══════════════ Private Helpers ═══════════════

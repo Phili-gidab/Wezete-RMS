@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  IsDateString,
   IsEnum,
   IsInt,
   IsNotEmpty,
@@ -45,6 +46,10 @@ export class CreateOrderDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsDateString()
+  pickupTime?: string;
 
   @IsArray()
   @ValidateNested({ each: true })

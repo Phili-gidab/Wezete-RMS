@@ -104,11 +104,21 @@ export class UsersService {
       }
     }
 
-    return this.prisma.user.update({
+    const updated = await this.prisma.user.update({
       where: { id },
       data,
       select: USER_SELECT,
     });
+
+    // Invalidate all sessions when role changes (proposal security requirement)
+    if (dto.role) {
+      await this.prisma.refreshToken.updateMany({
+        where: { userId: id, revoked: false },
+        data: { revoked: true },
+      });
+    }
+
+    return updated;
   }
 
   async remove(id: string) {

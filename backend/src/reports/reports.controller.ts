@@ -84,6 +84,40 @@ export class ReportsController {
     );
   }
 
+  @Get('payments/export/pdf')
+  async paymentPdf(@Query() query: ReportQueryDto, @Res() res: Response) {
+    const buffer = await this.exportsService.paymentPdf(
+      query.from ? new Date(query.from) : undefined,
+      query.to ? new Date(query.to) : undefined,
+    );
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename=payment-report-${Date.now()}.pdf`,
+    });
+    res.send(buffer);
+  }
+
+  @Get('payments/export/xlsx')
+  async paymentExcel(@Query() query: ReportQueryDto, @Res() res: Response) {
+    const buffer = await this.exportsService.paymentExcel(
+      query.from ? new Date(query.from) : undefined,
+      query.to ? new Date(query.to) : undefined,
+    );
+    res.set({
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename=payment-report-${Date.now()}.xlsx`,
+    });
+    res.send(buffer);
+  }
+
+  @Get('sales/comparison')
+  salesComparison(@Query() query: ReportQueryDto) {
+    return this.reportsService.salesComparison(
+      query.from ? new Date(query.from) : undefined,
+      query.to ? new Date(query.to) : undefined,
+    );
+  }
+
   @Get('staff-activity')
   @Roles(ROLE_LEVEL.ADMIN)
   staffActivity(@Query() query: ReportQueryDto) {
