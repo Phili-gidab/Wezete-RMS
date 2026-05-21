@@ -443,7 +443,7 @@ export class PaymentsService {
       .update(raw)
       .digest('hex')
       .slice(0, 16);
-    return `wz-${hash}`;
+    return `gm-${hash}`;
   }
 
   /**

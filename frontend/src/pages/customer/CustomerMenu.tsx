@@ -652,7 +652,7 @@ export default function CustomerMenu() {
       <header className="bg-[#0A3D39] text-white shadow-lg sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-lg sm:text-xl font-extrabold tracking-tight">Wezete</h1>
+            <h1 className="text-lg sm:text-xl font-extrabold tracking-tight">Green Mark</h1>
             <p className="text-teal-200 text-xs mt-0.5 hidden sm:block">
               {user ? `Welcome, ${user.name}` : 'Browse our menu'}
             </p>

@@ -3,6 +3,6 @@
 
 aws_region    = "us-east-1"
 ec2_key_name  = "your-key-pair-name"
-db_username   = "wezete_admin"
+db_username   = "greenmark_admin"
 db_password   = "CHANGE_ME_to_a_strong_password"
-db_name       = "wezete_db"
+db_name       = "greenmark_db"

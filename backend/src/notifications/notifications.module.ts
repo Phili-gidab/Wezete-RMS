@@ -12,7 +12,7 @@ import { NotificationsController } from './notifications.controller';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        secret: config.get<string>('JWT_SECRET', 'wezete-secret-change-me'),
+        secret: config.get<string>('JWT_SECRET', 'greenmark-secret-change-me'),
       }),
     }),
   ],

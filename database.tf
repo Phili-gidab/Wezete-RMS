@@ -1,9 +1,9 @@
 ###############################################################################
-# Wezete Restaurant Management System – Database (RDS PostgreSQL)
+# Green Mark Restaurant Management System – Database (RDS PostgreSQL)
 ###############################################################################
 
 # DB Subnet Group – spans both private subnets (required by RDS)
-resource "aws_db_subnet_group" "wezete_db_subnet_group" {
+resource "aws_db_subnet_group" "greenmark_db_subnet_group" {
   name       = "${var.project_name}-db-subnet-group"
   subnet_ids = [aws_subnet.private_a.id, aws_subnet.private_b.id]
 
@@ -12,7 +12,7 @@ resource "aws_db_subnet_group" "wezete_db_subnet_group" {
   }
 }
 
-resource "aws_db_instance" "wezete_db" {
+resource "aws_db_instance" "greenmark_db" {
   identifier     = "${var.project_name}-db"
   engine         = "postgres"
   engine_version = "16.4"
@@ -25,8 +25,8 @@ resource "aws_db_instance" "wezete_db" {
   username = var.db_username
   password = var.db_password
 
-  db_subnet_group_name   = aws_db_subnet_group.wezete_db_subnet_group.name
-  vpc_security_group_ids = [aws_security_group.wezete_db_sg.id]
+  db_subnet_group_name   = aws_db_subnet_group.greenmark_db_subnet_group.name
+  vpc_security_group_ids = [aws_security_group.greenmark_db_sg.id]
 
   multi_az            = false
   publicly_accessible = false

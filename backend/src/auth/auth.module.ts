@@ -15,7 +15,7 @@ import { RolesGuard } from './guards/roles.guard';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        secret: config.get<string>('JWT_SECRET', 'wezete-secret-change-me'),
+        secret: config.get<string>('JWT_SECRET', 'greenmark-secret-change-me'),
         signOptions: {
           expiresIn: config.get<string>('JWT_EXPIRES_IN', '15m') as any,
         },

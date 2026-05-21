@@ -49,7 +49,7 @@ export const useAuthStore = create<AuthState>()(
         set({ accessToken }),
     }),
     {
-      name: 'wezete-auth',
+      name: 'greenmark-auth',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         accessToken: state.accessToken,

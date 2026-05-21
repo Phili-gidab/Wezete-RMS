@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────
-// Wezete RMS — Prisma Schema
+// Green Mark RMS — Prisma Schema
 // Stack: NestJS + Prisma + PostgreSQL
 // ─────────────────────────────────────────────────────────────
 
@@ -166,7 +166,7 @@ model MenuItemInventory {
 
 model Order {
   id          String      @id @default(uuid())
-  orderNumber String      @unique @map("order_number") // e.g. "WZ-20260330-0001"
+  orderNumber String      @unique @map("order_number") // e.g. "GM-20260330-0001"
   status      OrderStatus @default(PENDING)
   orderType   String      @map("order_type") // DINE_IN, TAKEAWAY, DELIVERY
   tableNumber Int?        @map("table_number")

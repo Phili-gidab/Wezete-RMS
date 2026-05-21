@@ -1,5 +1,5 @@
 ###############################################################################
-# Wezete Restaurant Management System – Variables
+# Green Mark Restaurant Management System – Variables
 ###############################################################################
 
 variable "aws_region" {
@@ -11,7 +11,7 @@ variable "aws_region" {
 variable "project_name" {
   description = "Project identifier used for naming/tagging"
   type        = string
-  default     = "wezete"
+  default     = "greenmark"
 }
 
 variable "vpc_cidr" {
@@ -41,21 +41,21 @@ variable "private_subnet_b_cidr" {
 variable "db_username" {
   description = "Master username for the RDS PostgreSQL instance"
   type        = string
-  default     = "wezete_admin"
+  default     = "greenmark_admin"
   sensitive   = true
 }
 
 variable "db_password" {
   description = "Master password for the RDS PostgreSQL instance"
   type        = string
-  default     = "WezeteDB2026Secure!"
+  default     = "GreenMarkDB2026Secure!"
   sensitive   = true
 }
 
 variable "db_name" {
   description = "Name of the default database"
   type        = string
-  default     = "wezete_db"
+  default     = "greenmark_db"
 }
 
 variable "ec2_instance_type" {
@@ -73,5 +73,5 @@ variable "db_instance_class" {
 variable "ec2_key_name" {
   description = "Name of an existing EC2 Key Pair for SSH access"
   type        = string
-  default     = "wezete-key"
+  default     = "greenmark-key"
 }

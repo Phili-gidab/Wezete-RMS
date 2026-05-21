@@ -11,7 +11,7 @@ export class AppController {
   @Get()
   getInfo() {
     return {
-      name: 'Wezete RMS API',
+      name: 'Green Mark RMS API',
       version: '1.0.0',
       status: 'running',
     };

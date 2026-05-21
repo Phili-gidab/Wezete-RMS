@@ -1,9 +1,9 @@
 ###############################################################################
-# Wezete Restaurant Management System – Networking
+# Green Mark Restaurant Management System – Networking
 ###############################################################################
 
 # --- VPC ---
-resource "aws_vpc" "wezete_vpc" {
+resource "aws_vpc" "greenmark_vpc" {
   cidr_block           = var.vpc_cidr
   enable_dns_support   = true
   enable_dns_hostnames = true
@@ -14,8 +14,8 @@ resource "aws_vpc" "wezete_vpc" {
 }
 
 # --- Internet Gateway ---
-resource "aws_internet_gateway" "wezete_igw" {
-  vpc_id = aws_vpc.wezete_vpc.id
+resource "aws_internet_gateway" "greenmark_igw" {
+  vpc_id = aws_vpc.greenmark_vpc.id
 
   tags = {
     Name = "${var.project_name}-igw"
@@ -32,7 +32,7 @@ data "aws_availability_zones" "available" {
 
 # Public Subnet – hosts the EC2 backend server
 resource "aws_subnet" "public" {
-  vpc_id                  = aws_vpc.wezete_vpc.id
+  vpc_id                  = aws_vpc.greenmark_vpc.id
   cidr_block              = var.public_subnet_cidr
   availability_zone       = data.aws_availability_zones.available.names[0]
   map_public_ip_on_launch = true
@@ -44,7 +44,7 @@ resource "aws_subnet" "public" {
 
 # Private Subnet A – RDS (AZ-a)
 resource "aws_subnet" "private_a" {
-  vpc_id            = aws_vpc.wezete_vpc.id
+  vpc_id            = aws_vpc.greenmark_vpc.id
   cidr_block        = var.private_subnet_a_cidr
   availability_zone = data.aws_availability_zones.available.names[0]
 
@@ -55,7 +55,7 @@ resource "aws_subnet" "private_a" {
 
 # Private Subnet B – RDS (AZ-b, required for DB Subnet Group)
 resource "aws_subnet" "private_b" {
-  vpc_id            = aws_vpc.wezete_vpc.id
+  vpc_id            = aws_vpc.greenmark_vpc.id
   cidr_block        = var.private_subnet_b_cidr
   availability_zone = data.aws_availability_zones.available.names[1]
 
@@ -70,11 +70,11 @@ resource "aws_subnet" "private_b" {
 
 # Public route table – routes internet traffic through IGW
 resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.wezete_vpc.id
+  vpc_id = aws_vpc.greenmark_vpc.id
 
   route {
     cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.wezete_igw.id
+    gateway_id = aws_internet_gateway.greenmark_igw.id
   }
 
   tags = {
@@ -89,7 +89,7 @@ resource "aws_route_table_association" "public" {
 
 # Private route table – no internet route (isolated)
 resource "aws_route_table" "private" {
-  vpc_id = aws_vpc.wezete_vpc.id
+  vpc_id = aws_vpc.greenmark_vpc.id
 
   tags = {
     Name = "${var.project_name}-private-rt"
@@ -111,10 +111,10 @@ resource "aws_route_table_association" "private_b" {
 ###############################################################################
 
 # Backend SG – allows SSH, HTTP, HTTPS from the internet
-resource "aws_security_group" "wezete_backend_sg" {
+resource "aws_security_group" "greenmark_backend_sg" {
   name        = "${var.project_name}-backend-sg"
-  description = "Allow SSH, HTTP, and HTTPS inbound to Wezete backend"
-  vpc_id      = aws_vpc.wezete_vpc.id
+  description = "Allow SSH, HTTP, and HTTPS inbound to Green Mark backend"
+  vpc_id      = aws_vpc.greenmark_vpc.id
 
   ingress {
     description = "SSH"
@@ -154,17 +154,17 @@ resource "aws_security_group" "wezete_backend_sg" {
 }
 
 # Database SG – allows PostgreSQL ONLY from the backend SG
-resource "aws_security_group" "wezete_db_sg" {
+resource "aws_security_group" "greenmark_db_sg" {
   name        = "${var.project_name}-db-sg"
   description = "Allow PostgreSQL access only from the backend security group"
-  vpc_id      = aws_vpc.wezete_vpc.id
+  vpc_id      = aws_vpc.greenmark_vpc.id
 
   ingress {
     description     = "PostgreSQL from backend"
     from_port       = 5432
     to_port         = 5432
     protocol        = "tcp"
-    security_groups = [aws_security_group.wezete_backend_sg.id]
+    security_groups = [aws_security_group.greenmark_backend_sg.id]
   }
 
   egress {

@@ -8,7 +8,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: changeme
-      POSTGRES_DB: wezete_rms
+      POSTGRES_DB: greenmark_rms
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
@@ -29,8 +29,8 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://postgres:changeme@db:5432/wezete_rms?schema=public
-      JWT_SECRET: ${JWT_SECRET:-wezete-jwt-secret-change-in-production}
+      DATABASE_URL: postgresql://postgres:changeme@db:5432/greenmark_rms?schema=public
+      JWT_SECRET: ${JWT_SECRET:-greenmark-jwt-secret-change-in-production}
       JWT_EXPIRES_IN: 15m
       PORT: 3000
       CORS_ORIGIN: http://localhost,http://localhost:80

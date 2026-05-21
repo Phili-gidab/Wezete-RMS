@@ -20,7 +20,8 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "db:migrate": "npx prisma migrate dev",
     "db:seed": "npx prisma db seed",
-    "db:reset": "npx prisma migrate reset"
+    "db:reset": "npx prisma migrate reset",
+    "db:rename-wezete-emails": "ts-node prisma/rename-wezete-emails.ts"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

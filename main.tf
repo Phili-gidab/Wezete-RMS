@@ -1,5 +1,5 @@
 ###############################################################################
-# Wezete Restaurant Management System – Main Configuration
+# Green Mark Restaurant Management System – Main Configuration
 ###############################################################################
 
 terraform {
@@ -31,11 +31,11 @@ provider "aws" {
 ###############################################################################
 
 output "ec2_elastic_ip" {
-  description = "Elastic IP attached to the Wezete backend EC2 instance"
-  value       = aws_eip.wezete_eip.public_ip
+  description = "Elastic IP attached to the Green Mark backend EC2 instance"
+  value       = aws_eip.greenmark_eip.public_ip
 }
 
 output "rds_endpoint" {
   description = "RDS PostgreSQL endpoint (host:port)"
-  value       = aws_db_instance.wezete_db.endpoint
+  value       = aws_db_instance.greenmark_db.endpoint
 }

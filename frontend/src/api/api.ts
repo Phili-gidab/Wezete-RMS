@@ -23,7 +23,7 @@ let refreshPromise: Promise<string> | null = null;
 
 async function refreshAccessToken(): Promise<string> {
   const { data } = await axios.post<{ accessToken: string }>(
-    `${API_BASE_URL}/auth/refresh`,
+    `${API_BASE_URL}/api/v1/auth/refresh`,
     {},
     { withCredentials: true }, // send httpOnly cookie
   );

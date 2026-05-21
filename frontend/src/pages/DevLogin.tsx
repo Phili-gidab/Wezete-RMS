@@ -18,7 +18,7 @@ export default function DevLogin() {
       accessToken: 'dev-token',
       user: {
         id: `dev-${roleId}`,
-        email: `${ROLE_LABELS[roleId].toLowerCase().replace(/ /g, '.')}@wezete.dev`,
+        email: `${ROLE_LABELS[roleId].toLowerCase().replace(/ /g, '.')}@greenmark.dev`,
         name: `Dev ${ROLE_LABELS[roleId]}`,
         roleId,
       },
@@ -31,9 +31,9 @@ export default function DevLogin() {
       <div className="w-full max-w-sm rounded-xl bg-white p-8 shadow-sm border border-slate-200">
         <div className="flex items-center gap-2 mb-6">
           <span className="flex h-8 w-8 items-center justify-center rounded-md bg-forest text-white text-sm font-bold">
-            W
+            G
           </span>
-          <span className="text-lg font-semibold text-forest">Wezete RMS</span>
+          <span className="text-lg font-semibold text-forest">Green Mark RMS</span>
         </div>
 
         <p className="text-sm text-slate-500 mb-4">

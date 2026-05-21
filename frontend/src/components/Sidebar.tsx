@@ -120,9 +120,9 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
       <div className="flex items-center justify-between px-5 py-6">
         <div className="flex items-center gap-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-md bg-[#0A3D39] text-white text-sm font-bold">
-            W
+            G
           </span>
-          <span className="text-lg font-semibold text-[#0A3D39]">Wezete</span>
+          <span className="text-lg font-semibold text-[#0A3D39]">Green Mark</span>
         </div>
         {onClose && (
           <button onClick={onClose} className="lg:hidden p-1 rounded hover:bg-slate-100">

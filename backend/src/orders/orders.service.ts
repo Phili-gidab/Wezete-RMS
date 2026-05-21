@@ -8,6 +8,7 @@ import { OrderStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { InventoryService } from '../inventory/inventory.service';
+import { SettingsService } from '../settings/settings.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order.dto';
 
@@ -34,11 +35,12 @@ export class OrdersService {
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
     private readonly inventoryService: InventoryService,
+    private readonly settings: SettingsService,
   ) {}
 
   /**
    * Create a new order with items inside a transaction.
-   * Auto-generates the order number in the format WZ-YYYYMMDD-NNNN.
+   * Auto-generates the order number in the format {PREFIX}-YYYYMMDD-NNNN.
    */
   async create(dto: CreateOrderDto, userId: string) {
     const menuItemIds = dto.items.map((item) => item.menuItemId);
@@ -289,6 +291,10 @@ export class OrdersService {
 
     const PDFDocument = (await import('pdfkit')).default;
 
+    const restaurantName = (await this.settings.get('restaurantName')) || 'Green Mark RMS';
+    const restaurantPhone = (await this.settings.get('restaurantPhone')) || '';
+    const restaurantAddress = (await this.settings.get('restaurantAddress')) || '';
+
     return new Promise((resolve) => {
       const doc = new PDFDocument({ size: [226, 600], margin: 15 }); // ~80mm thermal receipt width
       const chunks: Buffer[] = [];
@@ -296,9 +302,10 @@ export class OrdersService {
       doc.on('end', () => resolve(Buffer.concat(chunks)));
 
       // Header
-      doc.fontSize(14).font('Helvetica-Bold').text('Wezete RMS', { align: 'center' });
-      doc.fontSize(8).font('Helvetica').text('The Bar Addis Restaurant & Lounge', { align: 'center' });
-      doc.text('Addis Ababa, Ethiopia', { align: 'center' });
+      doc.fontSize(14).font('Helvetica-Bold').text(restaurantName, { align: 'center' });
+      doc.fontSize(8).font('Helvetica');
+      if (restaurantAddress) doc.text(restaurantAddress, { align: 'center' });
+      if (restaurantPhone) doc.text(restaurantPhone, { align: 'center' });
       doc.moveDown(0.3);
       doc.text('─'.repeat(30), { align: 'center' });
       doc.moveDown(0.3);
@@ -350,7 +357,7 @@ export class OrdersService {
 
       doc.moveDown(0.5);
       doc.fontSize(8).text('Thank you for dining with us!', { align: 'center' });
-      doc.text('Wezete Technology', { align: 'center' });
+      doc.text('Green Mark Technology', { align: 'center' });
 
       doc.end();
     });
@@ -575,7 +582,8 @@ export class OrdersService {
     const mm = String(today.getMonth() + 1).padStart(2, '0');
     const dd = String(today.getDate()).padStart(2, '0');
     const dateStr = `${yyyy}${mm}${dd}`;
-    const prefix = `WZ-${dateStr}-`;
+    const orderPrefix = (await this.settings.get('orderPrefix')) || 'GM';
+    const prefix = `${orderPrefix}-${dateStr}-`;
 
     const startOfDay = new Date(yyyy, today.getMonth(), today.getDate());
     const endOfDay = new Date(yyyy, today.getMonth(), today.getDate() + 1);

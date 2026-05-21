@@ -1,8 +1,8 @@
 ###############################################################################
-# Wezete Restaurant Management System – Storage (S3)
+# Green Mark Restaurant Management System – Storage (S3)
 ###############################################################################
 
-resource "aws_s3_bucket" "wezete_receipts_menus" {
+resource "aws_s3_bucket" "greenmark_receipts_menus" {
   bucket = "${var.project_name}-receipts-menus"
 
   tags = {
@@ -11,8 +11,8 @@ resource "aws_s3_bucket" "wezete_receipts_menus" {
 }
 
 # Block ALL public access
-resource "aws_s3_bucket_public_access_block" "wezete_receipts_menus" {
-  bucket = aws_s3_bucket.wezete_receipts_menus.id
+resource "aws_s3_bucket_public_access_block" "greenmark_receipts_menus" {
+  bucket = aws_s3_bucket.greenmark_receipts_menus.id
 
   block_public_acls       = true
   block_public_policy     = true
@@ -21,8 +21,8 @@ resource "aws_s3_bucket_public_access_block" "wezete_receipts_menus" {
 }
 
 # Enable versioning
-resource "aws_s3_bucket_versioning" "wezete_receipts_menus" {
-  bucket = aws_s3_bucket.wezete_receipts_menus.id
+resource "aws_s3_bucket_versioning" "greenmark_receipts_menus" {
+  bucket = aws_s3_bucket.greenmark_receipts_menus.id
 
   versioning_configuration {
     status = "Enabled"
@@ -30,8 +30,8 @@ resource "aws_s3_bucket_versioning" "wezete_receipts_menus" {
 }
 
 # Server-side encryption (AES-256, free)
-resource "aws_s3_bucket_server_side_encryption_configuration" "wezete_receipts_menus" {
-  bucket = aws_s3_bucket.wezete_receipts_menus.id
+resource "aws_s3_bucket_server_side_encryption_configuration" "greenmark_receipts_menus" {
+  bucket = aws_s3_bucket.greenmark_receipts_menus.id
 
   rule {
     apply_server_side_encryption_by_default {

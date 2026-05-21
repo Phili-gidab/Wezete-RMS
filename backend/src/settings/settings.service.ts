@@ -3,9 +3,9 @@ import { PrismaService } from '../prisma/prisma.service';
 
 const DEFAULT_SETTINGS: Record<string, string> = {
   taxRate: '15',
-  orderPrefix: 'WZ',
+  orderPrefix: 'GM',
   currency: 'ETB',
-  restaurantName: 'Wezete RMS',
+  restaurantName: 'Green Mark RMS',
   restaurantPhone: '',
   restaurantAddress: '',
   chapaEnabled: 'true',

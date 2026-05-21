@@ -1,5 +1,5 @@
 ###############################################################################
-# Wezete Restaurant Management System – Compute (EC2)
+# Green Mark Restaurant Management System – Compute (EC2)
 ###############################################################################
 
 # Ubuntu 24.04 LTS AMI (latest, HVM, SSD, amd64)
@@ -18,11 +18,11 @@ data "aws_ami" "ubuntu" {
   }
 }
 
-resource "aws_instance" "wezete_backend" {
+resource "aws_instance" "greenmark_backend" {
   ami                    = data.aws_ami.ubuntu.id
   instance_type          = var.ec2_instance_type
   subnet_id              = aws_subnet.public.id
-  vpc_security_group_ids = [aws_security_group.wezete_backend_sg.id]
+  vpc_security_group_ids = [aws_security_group.greenmark_backend_sg.id]
   key_name               = var.ec2_key_name
 
   root_block_device {
@@ -71,7 +71,7 @@ resource "aws_instance" "wezete_backend" {
     systemctl start nginx
 
     # Create a basic Nginx reverse-proxy config placeholder
-    cat > /etc/nginx/sites-available/wezete <<'NGINX'
+    cat > /etc/nginx/sites-available/greenmark <<'NGINX'
     server {
         listen 80 default_server;
         server_name _;
@@ -86,7 +86,7 @@ resource "aws_instance" "wezete_backend" {
     }
     NGINX
 
-    ln -sf /etc/nginx/sites-available/wezete /etc/nginx/sites-enabled/wezete
+    ln -sf /etc/nginx/sites-available/greenmark /etc/nginx/sites-enabled/greenmark
     rm -f /etc/nginx/sites-enabled/default
     nginx -t && systemctl reload nginx
   USERDATA
@@ -97,7 +97,7 @@ resource "aws_instance" "wezete_backend" {
 }
 
 # --- Elastic IP ---
-resource "aws_eip" "wezete_eip" {
+resource "aws_eip" "greenmark_eip" {
   domain = "vpc"
 
   tags = {
@@ -105,7 +105,7 @@ resource "aws_eip" "wezete_eip" {
   }
 }
 
-resource "aws_eip_association" "wezete_eip_assoc" {
-  instance_id   = aws_instance.wezete_backend.id
-  allocation_id = aws_eip.wezete_eip.id
+resource "aws_eip_association" "greenmark_eip_assoc" {
+  instance_id   = aws_instance.greenmark_backend.id
+  allocation_id = aws_eip.greenmark_eip.id
 }

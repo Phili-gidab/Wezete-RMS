@@ -18,7 +18,7 @@ export class ExportsService {
       doc.on('end', () => resolve(Buffer.concat(chunks)));
 
       // Header
-      doc.fontSize(20).fillColor('#0A3D39').text('Wezete RMS — Sales Report', { align: 'center' });
+      doc.fontSize(20).fillColor('#0A3D39').text('Green Mark RMS — Sales Report', { align: 'center' });
       doc.moveDown(0.5);
       doc.fontSize(10).fillColor('#666').text(
         `Generated: ${new Date().toLocaleString()}${from ? ` | From: ${from.toLocaleDateString()}` : ''}${to ? ` | To: ${to.toLocaleDateString()}` : ''}`,
@@ -59,7 +59,7 @@ export class ExportsService {
     const topItems = await this.reports.topSellingItems(from, to);
 
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'Wezete RMS';
+    workbook.creator = 'Green Mark RMS';
 
     // Summary sheet
     const summary = workbook.addWorksheet('Summary');
@@ -104,7 +104,7 @@ export class ExportsService {
       doc.on('data', (chunk: Buffer) => chunks.push(chunk));
       doc.on('end', () => resolve(Buffer.concat(chunks)));
 
-      doc.fontSize(20).fillColor('#0A3D39').text('Wezete RMS — Payment Report', { align: 'center' });
+      doc.fontSize(20).fillColor('#0A3D39').text('Green Mark RMS — Payment Report', { align: 'center' });
       doc.moveDown(0.5);
       doc.fontSize(10).fillColor('#666').text(
         `Generated: ${new Date().toLocaleString()}${from ? ` | From: ${from.toLocaleDateString()}` : ''}${to ? ` | To: ${to.toLocaleDateString()}` : ''}`,
@@ -145,7 +145,7 @@ export class ExportsService {
     const report = await this.reports.paymentReport(from, to);
 
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'Wezete RMS';
+    workbook.creator = 'Green Mark RMS';
 
     const summary = workbook.addWorksheet('Summary');
     summary.columns = [

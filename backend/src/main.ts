@@ -37,7 +37,7 @@ async function bootstrap() {
 
   // Swagger API docs
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('Wezete RMS API')
+    .setTitle('Green Mark RMS API')
     .setDescription('Restaurant Management System — API Documentation')
     .setVersion('1.0')
     .addBearerAuth()
@@ -47,7 +47,7 @@ async function bootstrap() {
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
-  console.log(`Wezete RMS API running on port ${port}`);
+  console.log(`Green Mark RMS API running on port ${port}`);
   console.log(`Swagger docs at http://localhost:${port}/api/docs`);
 }
 bootstrap();

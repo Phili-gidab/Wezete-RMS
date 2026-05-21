@@ -19,14 +19,22 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
   console.log('Seeding database...');
 
+  // ──────────── Cleanup: remove legacy @wezete.com seed users ────────────
+  const removed = await prisma.user.deleteMany({
+    where: { email: { endsWith: '@wezete.com' } },
+  });
+  if (removed.count > 0) {
+    console.log(`  Removed ${removed.count} legacy @wezete.com users`);
+  }
+
   // ──────────── Users ────────────
   const password = await bcrypt.hash('Admin@2026', 12);
 
   const superAdmin = await prisma.user.upsert({
-    where: { email: 'superadmin@wezete.com' },
+    where: { email: 'superadmin@greenmark.com' },
     update: {},
     create: {
-      email: 'superadmin@wezete.com',
+      email: 'superadmin@greenmark.com',
       password,
       firstName: 'Super',
       lastName: 'Admin',
@@ -36,10 +44,10 @@ async function main() {
   });
 
   const admin = await prisma.user.upsert({
-    where: { email: 'admin@wezete.com' },
+    where: { email: 'admin@greenmark.com' },
     update: {},
     create: {
-      email: 'admin@wezete.com',
+      email: 'admin@greenmark.com',
       password,
       firstName: 'Restaurant',
       lastName: 'Manager',
@@ -49,10 +57,10 @@ async function main() {
   });
 
   const cashier = await prisma.user.upsert({
-    where: { email: 'cashier@wezete.com' },
+    where: { email: 'cashier@greenmark.com' },
     update: {},
     create: {
-      email: 'cashier@wezete.com',
+      email: 'cashier@greenmark.com',
       password,
       firstName: 'Sara',
       lastName: 'Tesfaye',
@@ -62,10 +70,10 @@ async function main() {
   });
 
   const waiter = await prisma.user.upsert({
-    where: { email: 'waiter@wezete.com' },
+    where: { email: 'waiter@greenmark.com' },
     update: {},
     create: {
-      email: 'waiter@wezete.com',
+      email: 'waiter@greenmark.com',
       password,
       firstName: 'Abel',
       lastName: 'Kebede',
@@ -75,10 +83,10 @@ async function main() {
   });
 
   const chef = await prisma.user.upsert({
-    where: { email: 'chef@wezete.com' },
+    where: { email: 'chef@greenmark.com' },
     update: {},
     create: {
-      email: 'chef@wezete.com',
+      email: 'chef@greenmark.com',
       password,
       firstName: 'Dawit',
       lastName: 'Hailu',
@@ -88,10 +96,10 @@ async function main() {
   });
 
   const barista = await prisma.user.upsert({
-    where: { email: 'barista@wezete.com' },
+    where: { email: 'barista@greenmark.com' },
     update: {},
     create: {
-      email: 'barista@wezete.com',
+      email: 'barista@greenmark.com',
       password,
       firstName: 'Hanna',
       lastName: 'Girma',
@@ -101,10 +109,10 @@ async function main() {
   });
 
   const inventoryMgr = await prisma.user.upsert({
-    where: { email: 'inventory@wezete.com' },
+    where: { email: 'inventory@greenmark.com' },
     update: {},
     create: {
-      email: 'inventory@wezete.com',
+      email: 'inventory@greenmark.com',
       password,
       firstName: 'Meron',
       lastName: 'Alemu',
@@ -114,10 +122,10 @@ async function main() {
   });
 
   const customer = await prisma.user.upsert({
-    where: { email: 'customer@wezete.com' },
+    where: { email: 'customer@greenmark.com' },
     update: {},
     create: {
-      email: 'customer@wezete.com',
+      email: 'customer@greenmark.com',
       password,
       firstName: 'Yonas',
       lastName: 'Mekonnen',
@@ -314,14 +322,14 @@ async function main() {
   console.log('Login credentials (all accounts):');
   console.log('  Password: Admin@2026');
   console.log('  Accounts:');
-  console.log('    superadmin@wezete.com  (Super Admin)');
-  console.log('    admin@wezete.com       (Admin/Manager)');
-  console.log('    cashier@wezete.com     (Cashier)');
-  console.log('    waiter@wezete.com      (Waiter)');
-  console.log('    chef@wezete.com        (Chef)');
-  console.log('    barista@wezete.com     (Barista)');
-  console.log('    inventory@wezete.com   (Inventory Manager)');
-  console.log('    customer@wezete.com    (Customer)');
+  console.log('    superadmin@greenmark.com  (Super Admin)');
+  console.log('    admin@greenmark.com       (Admin/Manager)');
+  console.log('    cashier@greenmark.com     (Cashier)');
+  console.log('    waiter@greenmark.com      (Waiter)');
+  console.log('    chef@greenmark.com        (Chef)');
+  console.log('    barista@greenmark.com     (Barista)');
+  console.log('    inventory@greenmark.com   (Inventory Manager)');
+  console.log('    customer@greenmark.com    (Customer)');
 }
 
 main()
